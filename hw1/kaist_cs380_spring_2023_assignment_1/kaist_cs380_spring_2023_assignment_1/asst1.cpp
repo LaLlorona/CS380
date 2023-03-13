@@ -52,6 +52,8 @@ static int g_height            = 512;       // screen height
 static bool g_leftClicked      = false;     // is the left mouse button down?
 static bool g_rightClicked     = false;     // is the right mouse button down?
 static float g_objScale        = 1.0;       // scale factor for object
+static float g_reverseScale = 1.0;
+
 static int g_leftClickX, g_leftClickY;      // coordinates for mouse left click event
 static int g_rightClickX, g_rightClickY;    // coordinates for mouse right click event
 
@@ -61,6 +63,10 @@ struct ShaderState {
   // Handles to uniform variables
   GLint h_uVertexScale;
   GLint h_uTexUnit0, h_uTexUnit1;
+
+  //this part is added
+  GLint h_uCurrentHeight;
+  GLint h_uCurrentWidth;
 
   // Handles to vertex attributes
   GLint h_aPosition;
@@ -74,8 +80,14 @@ struct ShaderState {
 
     // Retrieve handles to uniform variables
     h_uVertexScale = safe_glGetUniformLocation(h, "uVertexScale");
+    h_uCurrentWidth = safe_glGetUniformLocation(h, "uCurrentWidth");
+    h_uCurrentHeight = safe_glGetUniformLocation(h, "uCurrentHeight");
+    
+
     h_uTexUnit0 = safe_glGetUniformLocation(h, "uTexUnit0");
     h_uTexUnit1 = safe_glGetUniformLocation(h, "uTexUnit1");
+
+    
 
     // Retrieve handles to vertex attributes
     h_aPosition = safe_glGetAttribLocation(h, "aPosition");
@@ -218,6 +230,9 @@ static void display(void) {
   safe_glUniform1i(curSS.h_uTexUnit0, 0);
   safe_glUniform1i(curSS.h_uTexUnit1, 1);
   safe_glUniform1f(curSS.h_uVertexScale, g_objScale);
+  safe_glUniform1f(curSS.h_uCurrentHeight, g_height);
+  safe_glUniform1f(curSS.h_uCurrentWidth, g_width);
+  
   g_square->draw(curSS);
 
   glutSwapBuffers();
@@ -239,6 +254,7 @@ static void display(void) {
 static void reshape(int w, int h) {
   g_width = w;
   g_height = h;
+  
   glViewport(0, 0, w, h);
   glutPostRedisplay();
 }
@@ -299,7 +315,8 @@ static void motion(int x, int y) {
   if (g_rightClicked) {
     float deltax = (newx - g_rightClickX) * 0.02;
     g_objScale += deltax;
-
+    g_reverseScale = 1 / g_objScale;
+    
     g_rightClickX = newx;
     g_rightClickY = newy;
   }
