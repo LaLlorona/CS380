@@ -415,7 +415,7 @@ static void motion(const int x, const int y) {
     }
   }
   A = T * R;
-  MAMI = m * A * inv(m);
+  MAMI = A * m * inv(A);
 
 
 
@@ -493,7 +493,7 @@ static void keyboard(const unsigned char key, const int x, const int y) {
     
     break;
   case 'o':
-    cout << "fuck, o key was pressed!";
+    cout << "o key was pressed!";
     if (manipulationStatus == 0) {
    
       manipulationStatus = 1;
@@ -510,7 +510,21 @@ static void keyboard(const unsigned char key, const int x, const int y) {
     //
     break;
   case 'm':
-    cout << "fuck fuck, m key was pressed!~";
+    cout << "m key was pressed!~";
+
+    Matrix4 baseMatrix;
+    for (int y = 0 ; y < 4; y ++) {
+      for (int x = 0; x < 4; x++) {
+        baseMatrix(y, x) = y * 4.0 + double(x) + 1.0;
+      }
+    }
+    cout << "given matrix is \n";
+    PrintMatrix(baseMatrix);
+    cout << "transfact matrix is \n";
+    PrintMatrix(transFact(baseMatrix));
+    cout << "linfact matrix is \n";
+    PrintMatrix(linFact(baseMatrix));
+    
   }
   glutPostRedisplay();
 }

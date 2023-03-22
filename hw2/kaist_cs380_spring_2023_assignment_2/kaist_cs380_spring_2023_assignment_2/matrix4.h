@@ -6,6 +6,10 @@
 
 #include "cvec.h"
 
+
+//added part
+#include <iostream>
+
 // Forward declaration of Matrix4 and transpose since those are used below
 class Matrix4;
 Matrix4 transpose(const Matrix4& m);
@@ -280,45 +284,94 @@ inline Matrix4 normalMatrix(const Matrix4& m) {
 inline Matrix4 transFact(const Matrix4& m) {
   // TODO
   Matrix4 r(0);
-  for (int y = 0; y < 4; ++y) {
-    for (int x = 0; x < 4; ++x) {
-      if (x == 3) {
-        r(y, x) = m(y, x);
+  // for (int y = 0; y < 4; ++y) {
+  //   for (int x = 0; x < 4; ++x) {
+  //     if (x == 3) {
+  //       if (y == 3) {
+  //         r(y, x) = 1;
+  //       }
+  //       else {
+  //         r(y, x) = m(y, x);
+  //       }
+        
+  //     }
+  //     else {
+  //       if (y == x) {
+  //         r(y, x) = 1;
+  //       }
+  //       else {
+  //         r(y, x) = 0;
+  //       }
+  //     }
+      
+  //   }
+  // }
+  for (int y = 0; y < 4; y++) {
+    for (int x = 0; x < 4; x++) {
+      if (x == y) {
+        r(y, x) = 1;
       }
       else {
-        if (y == x) {
-          r(y, x) = 1;
-        }
-        else {
-          r(y, x) = 0;
-        }
+        r(y,x) = 0;
       }
-      
     }
   }
+  r(0, 3) = m(0, 3);
+  r(1, 3) = m(1, 3);
+  r(2, 3) = m(2, 3);
   return r;
 }
 
 inline Matrix4 linFact(const Matrix4& m) {
   // TODO
   Matrix4 r(0);
-  for (int y = 0; y < 4; ++y) {
-    for (int x = 0; x < 4; ++x) {
-      if (x != 3) {
-        r(y, x) = m(y, x);
+  // for (int y = 0; y < 4; ++y) {
+  //   for (int x = 0; x < 4; ++x) {
+  //     if (x != 3) {
+  //       if (y == 3) {
+  //         r(y, x) = 0;
+  //       }
+  //       else {
+  //         r(y, x) = m(y, x);
+  //       }
+        
+  //     }
+  //     else {
+  //       if (y == x) {
+  //         r(y, x) = 1;
+  //       }
+  //       else {
+  //         r(y, x) = 0;
+  //       }
+  //     }
+      
+  //   }
+  // }
+  for (int y = 0; y < 4; y++) {
+    for (int x = 0; x < 4; x++) {
+      if (x == y) {
+        r(y, x) = 1;
       }
       else {
-        if (y == x) {
-          r(y, x) = 1;
-        }
-        else {
-          r(y, x) = 0;
-        }
+        r(y,x) = 0;
       }
-      
+    }
+  }
+  for (int y = 0; y < 3; y++) {
+    for (int x = 0; x < 3; x++) {
+      r(y, x) = m(y, x);
     }
   }
   return r;
+}
+
+inline void PrintMatrix(const Matrix4& m) {
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 4; ++x) {
+      std::cout << m(y, x) << " ";
+    }
+    std::cout << "\n";
+  }
 }
 
 #endif
