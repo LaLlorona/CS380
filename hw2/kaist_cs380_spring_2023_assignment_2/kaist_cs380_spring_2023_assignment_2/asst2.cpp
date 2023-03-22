@@ -191,8 +191,17 @@ static shared_ptr<Geometry> g_ground, g_cube;
 
 static const Cvec3 g_light1(2.0, 3.0, 14.0), g_light2(-2, -3.0, -5.0);  // define two lights positions in world space
 static Matrix4 g_skyRbt = Matrix4::makeTranslation(Cvec3(0.0, 0.25, 4.0));
-static Matrix4 g_objectRbt[1] = {Matrix4::makeTranslation(Cvec3(0,0,0))};  // currently only 1 obj is defined
+static Matrix4 g_objectRbt[1] = {Matrix4::makeTranslation(Cvec3(-1,0,0))};  // currently only 1 obj is defined
 static Cvec3f g_objectColors[1] = {Cvec3f(1, 0, 0)};
+
+//this part is implemented by kkm. fuck!
+static Matrix4 g_object2Rbt[1] = {Matrix4::makeTranslation(Cvec3(1,0,0))};  // defining other object
+static Cvec3f g_object2Colors[1] = {Cvec3f(0, 1, 0)};
+
+static Matrix4 g_myRbt = Matrix4::makeTranslation(Cvec3(0.0, 0.25, 4.0));
+
+static int cameraStatus = 0;
+static int manipulationStatus = 0;
 
 ///////////////// END OF G L O B A L S //////////////////////////////////////////////////
 
@@ -265,8 +274,23 @@ static void drawStuff() {
   sendProjectionMatrix(curSS, projmat);
 
   // use the skyRbt as the eyeRbt
-  const Matrix4 eyeRbt = g_skyRbt; //eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
+  if (cameraStatus == 0) {
+    g_myRbt = g_skyRbt;
+  }
+  else if (cameraStatus == 1) {
+    g_myRbt = g_objectRbt[0];
+  }
+  else {
+    g_myRbt = g_object2Rbt[0];
+  }
+
+  const Matrix4 eyeRbt = g_myRbt; //eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
   const Matrix4 invEyeRbt = inv(eyeRbt);
+
+  //for testing
+  // const Matrix4 eyeRbt = g_myRbt; //eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
+  // const Matrix4 invEyeRbt = inv(eyeRbt);
+ 
 
   const Cvec3 eyeLight1 = Cvec3(invEyeRbt * Cvec4(g_light1, 1)); // g_light1 position in eye coordinates
   const Cvec3 eyeLight2 = Cvec3(invEyeRbt * Cvec4(g_light2, 1)); // g_light2 position in eye coordinates
@@ -289,6 +313,13 @@ static void drawStuff() {
   NMVM = normalMatrix(MVM);
   sendModelViewNormalMatrix(curSS, MVM, NMVM);
   safe_glUniform3f(curSS.h_uColor, g_objectColors[0][0], g_objectColors[0][1], g_objectColors[0][2]);
+  g_cube->draw(curSS);
+
+  //draw another cube
+  MVM = invEyeRbt * g_object2Rbt[0]; 
+  NMVM = normalMatrix(MVM);
+  sendModelViewNormalMatrix(curSS, MVM, NMVM);
+  safe_glUniform3f(curSS.h_uColor, g_object2Colors[0][0], g_object2Colors[0][1], g_object2Colors[0][2]);
   g_cube->draw(curSS);
 }
 
@@ -327,8 +358,80 @@ static void motion(const int x, const int y) {
     m = Matrix4::makeTranslation(Cvec3(0, 0, -dy) * 0.01);
   }
 
+  //we need to change value of m using
+  //AMA-1. A = TR
+
+  
+  Matrix4 T;
+  Matrix4 R;
+  Matrix4 A;
+  Matrix4 MAMI;
+
+
+  
+
+  if (cameraStatus == 0) { // when current eyeframe is sky frame
+    if (manipulationStatus == 0) { // when the current manipulation is skyframe
+      T = transFact(g_skyRbt);
+      R = linFact(g_skyRbt);
+    }
+    else if (manipulationStatus == 1) { // when the current manipulation is the cube 1
+      T = transFact(g_objectRbt[0]);
+      R = linFact(g_skyRbt);
+    }
+    else {
+      T = transFact(g_object2Rbt[0]);
+      R = linFact(g_skyRbt);
+    }
+  }
+
+  else if (cameraStatus == 1) { // when the current eyeframe is cube 1
+    if (manipulationStatus == 0) { //manipulation is skyframe
+      T = transFact(g_skyRbt);
+      R = linFact(g_objectRbt[0]);
+    }
+    else if (manipulationStatus == 1) {
+      T = transFact(g_objectRbt[0]);
+      R = linFact(g_objectRbt[0]);
+    }
+    else {
+      T = transFact(g_object2Rbt[0]);
+      R = linFact(g_objectRbt[0]);
+    }
+  }
+
+  else { //when the current eyeframe is cube 2 
+    if (manipulationStatus == 0) {
+      T = transFact(g_skyRbt);
+      R = linFact(g_object2Rbt[0]);
+    }
+    else if (manipulationStatus == 1) {
+      T = transFact(g_objectRbt[0]);
+      R = linFact(g_object2Rbt[0]);
+    }
+    else {
+      T = transFact(g_object2Rbt[0]);
+      R = linFact(g_object2Rbt[0]);
+    }
+  }
+  A = T * R;
+  MAMI = m * A * inv(m);
+
+
+
+
   if (g_mouseClickDown) {
-    g_objectRbt[0] *= m; // Simply right-multiply is WRONG
+    if (manipulationStatus == 0) {
+      g_objectRbt[0] *= MAMI; // Simply right-multiply is WRONG
+    }
+    else if (manipulationStatus == 1) {
+      g_object2Rbt[0] *= MAMI; // Simply right-multiply is WRONG
+    }
+    else {
+      g_skyRbt *= MAMI;
+    }
+    
+    // g_objectRbt[0] *= m; // Simply right-multiply is WRONG
     glutPostRedisplay(); // we always redraw if we changed the scene
   }
 
@@ -373,6 +476,41 @@ static void keyboard(const unsigned char key, const int x, const int y) {
   case 'f':
     g_activeShader ^= 1;
     break;
+  case 'v':
+    cout << "v key pressed";
+    if (cameraStatus == 0) {
+   
+      cameraStatus = 1;
+    } 
+    else if (cameraStatus == 1) {
+
+      cameraStatus = 2;
+    }
+    else {
+ 
+      cameraStatus = 0;
+    }
+    
+    break;
+  case 'o':
+    cout << "fuck, o key was pressed!";
+    if (manipulationStatus == 0) {
+   
+      manipulationStatus = 1;
+    } 
+    else if (manipulationStatus == 1) {
+
+      manipulationStatus = 2;
+    }
+    else {
+ 
+      manipulationStatus = 0;
+    }
+    //o 키가 눌렸을 때 현재 manipulated 되고 있는 object 를 바꿔야 함
+    //
+    break;
+  case 'm':
+    cout << "fuck fuck, m key was pressed!~";
   }
   glutPostRedisplay();
 }

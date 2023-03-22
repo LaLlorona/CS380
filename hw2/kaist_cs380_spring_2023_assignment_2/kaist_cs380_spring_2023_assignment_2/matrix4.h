@@ -279,10 +279,46 @@ inline Matrix4 normalMatrix(const Matrix4& m) {
 
 inline Matrix4 transFact(const Matrix4& m) {
   // TODO
+  Matrix4 r(0);
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 4; ++x) {
+      if (x == 3) {
+        r(y, x) = m(y, x);
+      }
+      else {
+        if (y == x) {
+          r(y, x) = 1;
+        }
+        else {
+          r(y, x) = 0;
+        }
+      }
+      
+    }
+  }
+  return r;
 }
 
 inline Matrix4 linFact(const Matrix4& m) {
   // TODO
+  Matrix4 r(0);
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 4; ++x) {
+      if (x != 3) {
+        r(y, x) = m(y, x);
+      }
+      else {
+        if (y == x) {
+          r(y, x) = 1;
+        }
+        else {
+          r(y, x) = 0;
+        }
+      }
+      
+    }
+  }
+  return r;
 }
 
 #endif
