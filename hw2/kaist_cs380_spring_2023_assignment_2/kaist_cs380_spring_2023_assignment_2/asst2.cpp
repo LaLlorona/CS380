@@ -202,7 +202,7 @@ static Matrix4 g_myRbt = Matrix4::makeTranslation(Cvec3(0.0, 0.25, 4.0));
 
 static int cameraStatus = 0;
 static int manipulationStatus = 0;
-
+static int worldSkyFrameStatus = 0; // 0: sky sky, 1: world sky
 ///////////////// END OF G L O B A L S //////////////////////////////////////////////////
 
 
@@ -371,49 +371,64 @@ static void motion(const int x, const int y) {
   
 
   if (cameraStatus == 0) { // when current eyeframe is sky frame
-    if (manipulationStatus == 0) { // when the current manipulation is skyframe
-      T = transFact(g_skyRbt);
-      R = linFact(g_skyRbt);
-    }
-    else if (manipulationStatus == 1) { // when the current manipulation is the cube 1
+    if (manipulationStatus == 0) { // when the current manipulation is cube1
       T = transFact(g_objectRbt[0]);
       R = linFact(g_skyRbt);
     }
-    else {
+    else if (manipulationStatus == 1) { // when the current manipulation is the cube 2
       T = transFact(g_object2Rbt[0]);
       R = linFact(g_skyRbt);
+    }
+    else { //when the current manipulation is the skyframe => we need to handle input m in this condition
+
+      if (worldSkyFrameStatus == 0) { // sky sky frame
+        T = transFact(g_skyRbt);
+        R = linFact(g_skyRbt);
+      }
+      else { // world sky frame
+      //we need to invert the sign of rotation => need to invert both rotation and translation 
+        Matrix4 identity = Matrix4();
+        T = transFact(identity * -1);
+        R = linFact(g_skyRbt * -1);
+      }
+      
+
+
+      
     }
   }
 
   else if (cameraStatus == 1) { // when the current eyeframe is cube 1
-    if (manipulationStatus == 0) { //manipulation is skyframe
-      T = transFact(g_skyRbt);
-      R = linFact(g_objectRbt[0]);
-    }
-    else if (manipulationStatus == 1) {
+    if (manipulationStatus == 0) { //manipulation is cub1
       T = transFact(g_objectRbt[0]);
       R = linFact(g_objectRbt[0]);
     }
-    else {
+    else if (manipulationStatus == 1) {
       T = transFact(g_object2Rbt[0]);
+      R = linFact(g_objectRbt[0]);
+    }
+    else {
+      T = transFact(g_skyRbt);
       R = linFact(g_objectRbt[0]);
     }
   }
 
-  else { //when the current eyeframe is cube 2 
+  else { //when the current eyeframe is cube2
     if (manipulationStatus == 0) {
-      T = transFact(g_skyRbt);
-      R = linFact(g_object2Rbt[0]);
-    }
-    else if (manipulationStatus == 1) {
       T = transFact(g_objectRbt[0]);
       R = linFact(g_object2Rbt[0]);
     }
-    else {
+    else if (manipulationStatus == 1) {
       T = transFact(g_object2Rbt[0]);
       R = linFact(g_object2Rbt[0]);
     }
+    else {
+      T = transFact(g_skyRbt);
+      R = linFact(g_object2Rbt[0]);
+    }
   }
+
+  
   A = T * R;
   MAMI = A * m * inv(A);
 
@@ -422,13 +437,13 @@ static void motion(const int x, const int y) {
 
   if (g_mouseClickDown) {
     if (manipulationStatus == 0) {
-      g_objectRbt[0] *= MAMI; // Simply right-multiply is WRONG
+      g_objectRbt[0] = MAMI * g_objectRbt[0]; // Simply right-multiply is WRONG
     }
     else if (manipulationStatus == 1) {
-      g_object2Rbt[0] *= MAMI; // Simply right-multiply is WRONG
+      g_object2Rbt[0] = MAMI * g_object2Rbt[0]; // Simply right-multiply is WRONG
     }
     else {
-      g_skyRbt *= MAMI;
+      g_skyRbt = MAMI * g_skyRbt;
     }
     
     // g_objectRbt[0] *= m; // Simply right-multiply is WRONG
@@ -512,18 +527,25 @@ static void keyboard(const unsigned char key, const int x, const int y) {
   case 'm':
     cout << "m key was pressed!~";
 
-    Matrix4 baseMatrix;
-    for (int y = 0 ; y < 4; y ++) {
-      for (int x = 0; x < 4; x++) {
-        baseMatrix(y, x) = y * 4.0 + double(x) + 1.0;
-      }
+    if (worldSkyFrameStatus == 0) {
+      worldSkyFrameStatus = 1;
     }
-    cout << "given matrix is \n";
-    PrintMatrix(baseMatrix);
-    cout << "transfact matrix is \n";
-    PrintMatrix(transFact(baseMatrix));
-    cout << "linfact matrix is \n";
-    PrintMatrix(linFact(baseMatrix));
+    else {
+      worldSkyFrameStatus = 0;
+    }
+
+    // Matrix4 baseMatrix;
+    // for (int y = 0 ; y < 4; y ++) {
+    //   for (int x = 0; x < 4; x++) {
+    //     baseMatrix(y, x) = y * 4.0 + double(x) + 1.0;
+    //   }
+    // }
+    // cout << "given matrix is \n";
+    // PrintMatrix(baseMatrix);
+    // cout << "transfact matrix is \n";
+    // PrintMatrix(transFact(baseMatrix));
+    // cout << "linfact matrix is \n";
+    // PrintMatrix(linFact(baseMatrix));
     
   }
   glutPostRedisplay();
