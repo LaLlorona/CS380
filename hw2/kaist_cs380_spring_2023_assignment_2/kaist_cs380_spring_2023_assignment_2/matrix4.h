@@ -321,6 +321,21 @@ inline Matrix4 linFact(const Matrix4& m) {
   return r;
 }
 
+inline Matrix4 OnlyProductXandYAxis(const Matrix4& m, double b) {
+  Matrix4 r(0);
+  for (int y = 0; y < 3; y++) {
+    for (int x = 0 ; x < 4; x++) {
+      if (y != 3) {
+        r(y, x) = m(y ,x) * b;
+      }
+      else {
+        r(y, x) = m(y, x);
+      }
+    }
+  }
+  return r;
+}
+
 inline void PrintMatrix(const Matrix4& m) {
   for (int y = 0; y < 4; ++y) {
     for (int x = 0; x < 4; ++x) {

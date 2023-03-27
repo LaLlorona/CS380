@@ -203,6 +203,25 @@ static Matrix4 g_myRbt = Matrix4::makeTranslation(Cvec3(0.0, 0.25, 4.0));
 static int cameraStatus = 0;
 static int manipulationStatus = 0;
 static int worldSkyFrameStatus = 0; // 0: sky sky, 1: world sky
+
+enum CAMERA_STATUS {
+  CAMERA_SKY,
+  CAMERA_CUBE1,
+  CAMERA_CUBE2,
+};
+
+enum MANIPULATION_STATUS {
+  MANIPULATION_CUBE1,
+  MANIPULATION_CUBE2,
+  MANIPULATION_SKY,
+};
+
+enum WORLDSKYFRAME_STATUS {
+  SKYSKY,
+  WORLDSKY
+};
+
+
 ///////////////// END OF G L O B A L S //////////////////////////////////////////////////
 
 
@@ -344,52 +363,47 @@ static void reshape(const int w, const int h) {
 }
 
 static void motion(const int x, const int y) {
-  const double dx = x - g_mouseClickX;
-  const double dy = g_windowHeight - y - 1 - g_mouseClickY;
-
-  Matrix4 m;
-  if (g_mouseLClickButton && !g_mouseRClickButton) { // left button down?
-    m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
-  }
-  else if (g_mouseRClickButton && !g_mouseLClickButton) { // right button down?
-    m = Matrix4::makeTranslation(Cvec3(dx, dy, 0) * 0.01);
-  }
-  else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton)) {  // middle or (left and right) button down?
-    m = Matrix4::makeTranslation(Cvec3(0, 0, -dy) * 0.01);
-  }
-
   //we need to change value of m using
   //AMA-1. A = TR
 
   
+  
+
+  const double dx = x - g_mouseClickX;
+  const double dy = g_windowHeight - y - 1 - g_mouseClickY;
+
   Matrix4 T;
   Matrix4 R;
   Matrix4 A;
-  Matrix4 MAMI;
+  Matrix4 AMAI;
 
 
   
 
-  if (cameraStatus == 0) { // when current eyeframe is sky frame
-    if (manipulationStatus == 0) { // when the current manipulation is cube1
+  if (cameraStatus == CAMERA_SKY) { // when current eyeframe is sky frame
+    if (manipulationStatus == MANIPULATION_CUBE1) { // when the current manipulation is cube1
       T = transFact(g_objectRbt[0]);
       R = linFact(g_skyRbt);
     }
-    else if (manipulationStatus == 1) { // when the current manipulation is the cube 2
+    else if (manipulationStatus == MANIPULATION_CUBE2) { // when the current manipulation is the cube 2
       T = transFact(g_object2Rbt[0]);
       R = linFact(g_skyRbt);
     }
     else { //when the current manipulation is the skyframe => we need to handle input m in this condition
 
-      if (worldSkyFrameStatus == 0) { // sky sky frame
+      if (worldSkyFrameStatus == SKYSKY) { // sky sky frame
+        cout <<"sky sky frame\n";
         T = transFact(g_skyRbt);
         R = linFact(g_skyRbt);
       }
       else { // world sky frame
+        cout << "world sky frame\n";
       //we need to invert the sign of rotation => need to invert both rotation and translation 
         Matrix4 identity = Matrix4();
-        T = transFact(identity * -1);
-        R = linFact(g_skyRbt * -1);
+        T = transFact(identity);
+        R = linFact(g_skyRbt);
+
+        //this code 
       }
       
 
@@ -398,52 +412,84 @@ static void motion(const int x, const int y) {
     }
   }
 
-  else if (cameraStatus == 1) { // when the current eyeframe is cube 1
-    if (manipulationStatus == 0) { //manipulation is cub1
+  else if (cameraStatus == CAMERA_CUBE1) { // when the current eyeframe is cube 1
+    if (manipulationStatus == MANIPULATION_CUBE1) { //manipulation is cub1
       T = transFact(g_objectRbt[0]);
       R = linFact(g_objectRbt[0]);
     }
-    else if (manipulationStatus == 1) {
+    else if (manipulationStatus == MANIPULATION_CUBE2) { //manipulation is cube2
       T = transFact(g_object2Rbt[0]);
       R = linFact(g_objectRbt[0]);
     }
-    else {
-      T = transFact(g_skyRbt);
-      R = linFact(g_objectRbt[0]);
+    else { //manipulation is skycamera - NOT ALLOWED!
+      return;
+      // T = transFact(g_skyRbt);
+      // R = linFact(g_objectRbt[0]);
     }
   }
 
   else { //when the current eyeframe is cube2
-    if (manipulationStatus == 0) {
+    if (manipulationStatus == MANIPULATION_CUBE1) {
       T = transFact(g_objectRbt[0]);
       R = linFact(g_object2Rbt[0]);
     }
-    else if (manipulationStatus == 1) {
+    else if (manipulationStatus == MANIPULATION_CUBE2) {
       T = transFact(g_object2Rbt[0]);
       R = linFact(g_object2Rbt[0]);
     }
-    else {
-      T = transFact(g_skyRbt);
-      R = linFact(g_object2Rbt[0]);
+    else { //manipulation is sky camera - NOT ALLOWED!
+      return;
+      // T = transFact(g_skyRbt);
+      // R = linFact(g_object2Rbt[0]);
     }
   }
 
+  Matrix4 m;
+  if (g_mouseLClickButton && !g_mouseRClickButton) { // left button down?
+    if ((cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY) || (cameraStatus == CAMERA_CUBE1 && manipulationStatus == MANIPULATION_CUBE1
+    || (cameraStatus == CAMERA_CUBE2 && manipulationStatus == MANIPULATION_CUBE2)
+    )) {
+      m = Matrix4::makeXRotation(dy) * Matrix4::makeYRotation(-dx);
+    }
+    else {
+      m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
+    }
+    
+  }
+  else if (g_mouseRClickButton && !g_mouseLClickButton) { // right button down?
+    if (cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY && worldSkyFrameStatus == WORLDSKY) {
+      m = Matrix4::makeTranslation(Cvec3(-dx, -dy, 0) * 0.01);
+    }
+    else {
+      m = Matrix4::makeTranslation(Cvec3(dx, dy, 0) * 0.01);
+    }
+    
+  }
+  else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton)) {  // middle or (left and right) button down?
+    m = Matrix4::makeTranslation(Cvec3(0, 0, -dy) * 0.01);
+  }
+
+  
+
   
   A = T * R;
-  MAMI = A * m * inv(A);
+  AMAI = A * m * inv(A);
 
 
 
 
   if (g_mouseClickDown) {
-    if (manipulationStatus == 0) {
-      g_objectRbt[0] = MAMI * g_objectRbt[0]; // Simply right-multiply is WRONG
+    if (manipulationStatus == MANIPULATION_CUBE1) {
+      g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
+  
     }
-    else if (manipulationStatus == 1) {
-      g_object2Rbt[0] = MAMI * g_object2Rbt[0]; // Simply right-multiply is WRONG
+    else if (manipulationStatus == MANIPULATION_CUBE2) {
+      g_object2Rbt[0] = AMAI * g_object2Rbt[0]; // Simply right-multiply is WRONG
+     
     }
     else {
-      g_skyRbt = MAMI * g_skyRbt;
+      g_skyRbt = AMAI * g_skyRbt;
+ 
     }
     
     // g_objectRbt[0] *= m; // Simply right-multiply is WRONG
@@ -525,7 +571,7 @@ static void keyboard(const unsigned char key, const int x, const int y) {
     //
     break;
   case 'm':
-    cout << "m key was pressed!~";
+    
 
     if (worldSkyFrameStatus == 0) {
       worldSkyFrameStatus = 1;
@@ -534,18 +580,24 @@ static void keyboard(const unsigned char key, const int x, const int y) {
       worldSkyFrameStatus = 0;
     }
 
-    // Matrix4 baseMatrix;
-    // for (int y = 0 ; y < 4; y ++) {
-    //   for (int x = 0; x < 4; x++) {
-    //     baseMatrix(y, x) = y * 4.0 + double(x) + 1.0;
-    //   }
-    // }
-    // cout << "given matrix is \n";
-    // PrintMatrix(baseMatrix);
-    // cout << "transfact matrix is \n";
-    // PrintMatrix(transFact(baseMatrix));
-    // cout << "linfact matrix is \n";
-    // PrintMatrix(linFact(baseMatrix));
+    Matrix4 baseMatrix;
+    for (int y = 0 ; y < 4; y ++) {
+      for (int x = 0; x < 4; x++) {
+        baseMatrix(y, x) = y * 4.0 + double(x) + 1.0;
+      }
+    }
+    cout << "given matrix is \n";
+    PrintMatrix(baseMatrix);
+    cout << "transfact matrix is \n";
+    PrintMatrix(transFact(baseMatrix));
+    cout << "linfact matrix is \n";
+    PrintMatrix(linFact(baseMatrix));
+
+    cout <<"-1 product of transfact matrix is\n";
+    PrintMatrix(transFact(baseMatrix * -1));
+
+    cout << "-1 product of linfact matrix is \n";
+    PrintMatrix(linFact(baseMatrix * -1));
     
   }
   glutPostRedisplay();
