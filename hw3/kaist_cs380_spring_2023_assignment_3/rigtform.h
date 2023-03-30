@@ -54,25 +54,30 @@ public:
 
   Cvec4 operator * (const Cvec4& a) const {
     // TODO
+    //full afine matrix 에다가 Cvec4를 곱한다. 
+    //왜 필요한가? - Matrix4 에 Cvec4를 곱하는 함수가 존재하기 때문.
   }
 
   RigTForm operator * (const RigTForm& a) const {
     // TODO
-    // Matrix4 thisToMatrix4 = rigTFormToMatrix((RigTForm)*this);
-    // Matrix4 aToMatrix4 = rigTFormToMatrix(a);
+    Matrix4 thisToMatrix4 = rigTFormToMatrix((RigTForm)*this);
+    Matrix4 aToMatrix4 = rigTFormToMatrix(a);
 
-    // Matrix4 t1 = transFact(thisToMatrix4);
-    // Matrix4 r1 = linFact(thisToMatrix4);
+    Matrix4 t1 = transFact(thisToMatrix4);
+    Matrix4 r1 = linFact(thisToMatrix4);
 
-    // Matrix4 t2 = transFact(aToMatrix4);
-    // Matrix4 r2 = linFact(aToMatrix4);
+    Matrix4 t2 = transFact(aToMatrix4);
+    Matrix4 r2 = linFact(aToMatrix4);
 
-    // Matrix4 resultTrans = transFact(t1 + r1 * t2);
-    // Matrix4 resultRot = linFact(r1 * r2);
+    Matrix4 resultTrans = transFact(t1 + r1 * t2);
+    Matrix4 resultRot = linFact(r1 * r2);
 
     //question: how can I convert matrix4 to quaternion?????????
+    // 굳이 Matrix4 로 변환한 필요가 없다. 
 
-    
+    //r1: quaternion 으로 정의됨. 
+
+
 
     
 
