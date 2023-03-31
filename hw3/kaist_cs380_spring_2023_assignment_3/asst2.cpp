@@ -411,7 +411,7 @@ static void motion(const int x, const int y) {
     else { //when the current manipulation is the skyframe => we need to handle input m in this condition
 
       if (worldSkyFrameStatus == SKYSKY) { // sky sky frame
-        cout <<"sky sky frame\n";
+   
         // T = transFact(g_skyRbt);
         // R = linFact(g_skyRbt);
 
@@ -419,7 +419,7 @@ static void motion(const int x, const int y) {
         A.setRotation(g_skyRbt.getRotation());
       }
       else { // world sky frame
-        cout << "world sky frame\n";
+    
       //we need to invert the sign of rotation => need to invert both rotation and translation 
         // Matrix4 identity = Matrix4();
         // T = transFact(identity);
@@ -484,13 +484,14 @@ static void motion(const int x, const int y) {
     || (cameraStatus == CAMERA_CUBE2 && manipulationStatus == MANIPULATION_CUBE2)
     )) {
       // m = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
+   
       RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
       RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(-dx));
       m = xRotation * yRotation;
 
       // cout << "rotation part 1\n";
 
-      PrintTForm(m);
+    
     }
     else {
       // m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
@@ -499,7 +500,7 @@ static void motion(const int x, const int y) {
       m = xRotation * yRotation;
 
       // cout << "rotation part 2\n";
-      PrintTForm(m);
+  
     }
     
   }
@@ -527,27 +528,24 @@ static void motion(const int x, const int y) {
 
   if (g_mouseClickDown) {
     if (manipulationStatus == MANIPULATION_CUBE1) {
-      cout << "manipulating cube1\n";
-      cout << "before manipulation is ";
-      PrintTForm(g_objectRbt[0]);
+   
+
       g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
-      cout << "after manipulation is ";
-      PrintTForm(g_objectRbt[0]);
-      cout << "AMAI is \n";
-      PrintTForm(AMAI);
+   
+
       
   
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) {
-      cout << "manipulating cube2\n";
+
       g_object2Rbt[0] = AMAI * g_object2Rbt[0]; // Simply right-multiply is WRONG
      
     }
     else {
-      cout << "manipulating sky\n";
+
       g_skyRbt = AMAI * g_skyRbt;
-      cout << "AMAI is \n";
-      PrintTForm(AMAI);
+    
+  
  
     }
     

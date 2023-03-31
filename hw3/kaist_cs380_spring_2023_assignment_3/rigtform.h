@@ -85,8 +85,6 @@ public:
 
     return result;
 
-
-
     //question: how can I convert matrix4 to quaternion?????????
     // 굳이 Matrix4 로 변환한 필요가 없다. 
 
@@ -99,20 +97,7 @@ public:
   }
 };
 
-inline void PrintTForm(const RigTForm& tform) {
-  std::cout << "transpart is :";
-  for (int i = 0; i < 3; i++) {
-    std::cout << tform.getTranslation()(i) << " ";
-  }
-  std::cout <<"\n";
 
-  std::cout <<"rotation part is:";
-
-  for (int i =0 ; i < 4; i++) {
-    std::cout << tform.getRotation()[i] << " ";
-  }
-  std::cout <<"\n";
-}
 
 inline RigTForm inv(const RigTForm& tform) {
   // TODO
@@ -132,9 +117,21 @@ inline RigTForm inv(const RigTForm& tform) {
 
   return result;
 
-  
+}
 
+inline void PrintTForm(const RigTForm& tform) {
+  std::cout << "transpart is :";
+  for (int i = 0; i < 3; i++) {
+    std::cout << tform.getTranslation()(i) << " ";
+  }
+  std::cout <<"\n";
 
+  std::cout <<"rotation part is:";
+
+  for (int i =0 ; i < 4; i++) {
+    std::cout << tform.getRotation()[i] << " ";
+  }
+  std::cout <<"\n";
 }
 
 inline RigTForm transFact(const RigTForm& tform) {
@@ -149,7 +146,7 @@ inline RigTForm linFact(const RigTForm& tform) {
 inline Matrix4 rigTFormToMatrix(const RigTForm& tform) {
   // TODO
   
-  Matrix4 rotMatrix = Matrix4();
+
   
   //translation part
   Cvec3 translation = tform.getTranslation();
@@ -159,7 +156,7 @@ inline Matrix4 rigTFormToMatrix(const RigTForm& tform) {
   Quat rotation = tform.getRotation();
   Matrix4 rotationMatrix = quatToMatrix(rotation);
   
-  return transMatrix * rotMatrix;
+  return transMatrix * rotationMatrix;
 }
 
 
