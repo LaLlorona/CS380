@@ -607,7 +607,7 @@ static void initGlutState(int argc, char * argv[]) {
   glutInit(&argc, argv);                                  // initialize Glut based on cmd-line args
   glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH);  //  RGBA pixel channels and double buffering
   glutInitWindowSize(g_windowWidth, g_windowHeight);      // create a window
-  glutCreateWindow("CS380: Assignment 2");                       // title the window
+  glutCreateWindow("CS380: Assignment 3");                       // title the window
 
   glutDisplayFunc(display);                               // display rendering callback
   glutReshapeFunc(reshape);                               // window reshape callback

@@ -56,21 +56,34 @@ public:
     // TODO
     //full afine matrix 에다가 Cvec4를 곱한다. 
     //왜 필요한가? - Matrix4 에 Cvec4를 곱하는 함수가 존재하기 때문.
+
+    return cvec3ToMatrix4(t_) * quatToMatrix(r_) * a;
   }
 
   RigTForm operator * (const RigTForm& a) const {
     // TODO
-    Matrix4 thisToMatrix4 = rigTFormToMatrix((RigTForm)*this);
-    Matrix4 aToMatrix4 = rigTFormToMatrix(a);
+    RigTForm result;
 
-    Matrix4 t1 = transFact(thisToMatrix4);
-    Matrix4 r1 = linFact(thisToMatrix4);
+    Cvec3 t2 = a.getTranslation();
+    Quat r2 = a.getRotation();
 
-    Matrix4 t2 = transFact(aToMatrix4);
-    Matrix4 r2 = linFact(aToMatrix4);
+    Cvec3 t1 = t_;
+    Quat r1 = r_;
 
-    Matrix4 resultTrans = transFact(t1 + r1 * t2);
-    Matrix4 resultRot = linFact(r1 * r2);
+    Cvec4 r1t2 = quatToMatrix(r1) * cvec3ToCvec4(t2);
+
+    Cvec4 t1_r1t2 = cvec3ToCvec4(t1) + r1t2;
+
+    Cvec3 resultTrans(t1_r1t2(0), t1_r1t2(1), t1_r1t2(2));
+
+    Quat resultQuaterion = r1 * r2;
+
+    result.setTranslation(resultTrans);
+    result.setRotation(resultQuaterion);
+
+    return result;
+
+
 
     //question: how can I convert matrix4 to quaternion?????????
     // 굳이 Matrix4 로 변환한 필요가 없다. 
@@ -88,42 +101,19 @@ inline RigTForm inv(const RigTForm& tform) {
   // TODO
   RigTForm result;
 
-  Quat tformRot = tform.getRotation();
-  Cvec3 tformTrans = tform.getTranslation();
-  Cvec4 tformTransCvec4(tformTrans(0), tformTrans(1), tformTrans(2), 1);
+  Quat r = tform.getRotation();
+  Cvec3 t = tform.getTranslation();
+  Cvec4 tCvec4(t(0), t(1), t(2), 1);
 
-  // Cvec4 transResult = quatToMatrix(inv(tformRot)) * cvec3ToMatrix4(tformTrans) * -1;
+  Matrix4 rInv = quatToMatrix(inv(r));
 
-  Matrix4 rInv = quatToMatrix(inv(tformRot));
-
-  Cvec4 transResult = rInv * tformTransCvec4 * -1;
+  Cvec4 transResult = rInv * tCvec4 * -1;
 
   Cvec3 transResultCvec3(transResult(0), transResult(1), transResult(2));
   result.setTranslation(transResultCvec3);
-  result.setRotation(inv(tformRot));
+  result.setRotation(inv(r));
 
   return result;
-
-
-
-
-  
-
-  // Cvec3 transResultCvec3(transResult(0), transResult(1), transResult(2));
-
-
-
-  
-
-  // Matrix4 tformToMatrix4 = rigTFormToMatrix(tform);
-
-  // Matrix4 t = transFact(tformToMatrix4);
-  // Matrix4 r = linFact(tformToMatrix4);
-
-  // Matrix4 resultTrans = transFact(inv(r) * t * -1);
-  // Matrix4 resultRot = linFact(inv(r));
-
-  //question again: Matrix4 에서 쿼터니온으로 어떻게 바꾸????????????????????
 
 
 }
@@ -158,6 +148,11 @@ inline Matrix4 cvec3ToMatrix4(const Cvec3& a) {
   for (int y = 0; y < 3; y++) {
     result(y, 3) = a[y];
   }
+  return result;
+}
+
+inline Cvec4 cvec3ToCvec4(const Cvec3& a) {
+  Cvec4 result(a(0), a(1), a(2), 1);
   return result;
 }
 
