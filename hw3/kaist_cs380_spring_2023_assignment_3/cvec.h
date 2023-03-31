@@ -131,6 +131,7 @@ inline Cvec<T,3> cross(const Cvec<T,3>& a, const Cvec<T,3>& b) {
   return Cvec<T,3>(a(1)*b(2)-a(2)*b(1), a(2)*b(0)-a(0)*b(2), a(0)*b(1)-a(1)*b(0));
 }
 
+
 template<typename T, int n>
 inline T dot(const Cvec<T,n>& a, const Cvec<T,n>& b) {
   T r(0);
@@ -172,5 +173,15 @@ typedef Cvec <float, 4> Cvec4f;
 typedef Cvec <unsigned char, 2> Cvec2ub;
 typedef Cvec <unsigned char, 3> Cvec3ub;
 typedef Cvec <unsigned char, 4> Cvec4ub;
+
+inline Cvec4 cvec3ToCvec4(const Cvec3& a) {
+  Cvec4 result(a(0), a(1), a(2), 1);
+  return result;
+}
+
+inline Cvec3 cvec4ToCvec3(const Cvec4& a) {
+  Cvec3 result(a(0), a(1), a(2));
+  return result;
+}
 
 #endif

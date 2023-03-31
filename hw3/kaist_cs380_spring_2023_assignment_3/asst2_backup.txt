@@ -191,17 +191,15 @@ static shared_ptr<Geometry> g_ground, g_cube;
 // --------- Scene
 
 static const Cvec3 g_light1(2.0, 3.0, 14.0), g_light2(-2, -3.0, -5.0);  // define two lights positions in world space
-static RigTForm g_skyRbt = RigTForm().setTranslation(Cvec3(0.0, 0.25, 4.0));
-// g_skyRbt.setTranslation(Cvec3(0.0, 0.25, 4.0));
-// RigTForm.setTranslation(Cvec3(0.0, 0.25, 4.0));
-static RigTForm g_objectRbt[1] = {RigTForm().setTranslation(Cvec3(-1,0,0))};  // currently only 1 obj is defined
+static Matrix4 g_skyRbt = Matrix4::makeTranslation(Cvec3(0.0, 0.25, 4.0));
+static Matrix4 g_objectRbt[1] = {Matrix4::makeTranslation(Cvec3(-1,0,0))};  // currently only 1 obj is defined
 static Cvec3f g_objectColors[1] = {Cvec3f(1, 0, 0)};
 
 //this part is implemented by kkm. fuck!
-static RigTForm g_object2Rbt[1] = {RigTForm().setTranslation(Cvec3(1,0,0))};  // defining other object
+static Matrix4 g_object2Rbt[1] = {Matrix4::makeTranslation(Cvec3(1,0,0))};  // defining other object
 static Cvec3f g_object2Colors[1] = {Cvec3f(0, 1, 0)};
 
-static RigTForm g_myRbt = RigTForm().setTranslation(Cvec3(0.0, 0.25, 4.0));
+static Matrix4 g_myRbt = Matrix4::makeTranslation(Cvec3(0.0, 0.25, 4.0));
 
 static int cameraStatus = 0;
 static int manipulationStatus = 0;
@@ -306,8 +304,8 @@ static void drawStuff() {
     g_myRbt = g_object2Rbt[0];
   }
 
-  const RigTForm eyeRbt = g_myRbt; //eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
-  const RigTForm invEyeRbt = inv(eyeRbt);
+  const Matrix4 eyeRbt = g_myRbt; //eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
+  const Matrix4 invEyeRbt = inv(eyeRbt);
 
   //for testing
   // const Matrix4 eyeRbt = g_myRbt; //eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
@@ -322,8 +320,8 @@ static void drawStuff() {
   // draw ground
   // ===========
   //
-  const RigTForm groundRbt = RigTForm();  // identity
-  Matrix4 MVM = rigTFormToMatrix(invEyeRbt * groundRbt); //E-1O
+  const Matrix4 groundRbt = Matrix4();  // identity
+  Matrix4 MVM = invEyeRbt * groundRbt; //E-1O
   Matrix4 NMVM = normalMatrix(MVM);
   sendModelViewNormalMatrix(curSS, MVM, NMVM);
   safe_glUniform3f(curSS.h_uColor, 0.1, 0.95, 0.1); // set color
@@ -331,14 +329,14 @@ static void drawStuff() {
 
   // draw cubes
   // ==========
-  MVM = rigTFormToMatrix(invEyeRbt * g_objectRbt[0]); 
+  MVM = invEyeRbt * g_objectRbt[0]; 
   NMVM = normalMatrix(MVM);
   sendModelViewNormalMatrix(curSS, MVM, NMVM);
   safe_glUniform3f(curSS.h_uColor, g_objectColors[0][0], g_objectColors[0][1], g_objectColors[0][2]);
   g_cube->draw(curSS);
 
   //draw another cube
-  MVM = rigTFormToMatrix(invEyeRbt * g_object2Rbt[0]); 
+  MVM = invEyeRbt * g_object2Rbt[0]; 
   NMVM = normalMatrix(MVM);
   sendModelViewNormalMatrix(curSS, MVM, NMVM);
   safe_glUniform3f(curSS.h_uColor, g_object2Colors[0][0], g_object2Colors[0][1], g_object2Colors[0][2]);
@@ -375,58 +373,36 @@ static void motion(const int x, const int y) {
   const double dx = x - g_mouseClickX;
   const double dy = g_windowHeight - y - 1 - g_mouseClickY;
 
-  // Matrix4 T;
-  // Matrix4 R;
-  // Matrix4 A;
-  // Matrix4 AMAI;
-
-  RigTForm A;
-
-  RigTForm AMAI;
-  
+  Matrix4 T;
+  Matrix4 R;
+  Matrix4 A;
+  Matrix4 AMAI;
 
 
   
 
   if (cameraStatus == CAMERA_SKY) { // when current eyeframe is sky frame
     if (manipulationStatus == MANIPULATION_CUBE1) { // when the current manipulation is cube1
-      // T = transFact(g_objectRbt[0]);
-      // R = linFact(g_skyRbt);
-
-      A.setTranslation(g_objectRbt[0].getTranslation());
-      A.setRotation(g_skyRbt.getRotation());
+      T = transFact(g_objectRbt[0]);
+      R = linFact(g_skyRbt);
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) { // when the current manipulation is the cube 2
-      
-      
-      
-      // T = transFact(g_object2Rbt[0]);
-      // R = linFact(g_skyRbt);
-
-      A.setTranslation(g_object2Rbt[0].getTranslation());
-      A.setRotation(g_skyRbt.getRotation());
-
-      
+      T = transFact(g_object2Rbt[0]);
+      R = linFact(g_skyRbt);
     }
     else { //when the current manipulation is the skyframe => we need to handle input m in this condition
 
       if (worldSkyFrameStatus == SKYSKY) { // sky sky frame
         cout <<"sky sky frame\n";
-        // T = transFact(g_skyRbt);
-        // R = linFact(g_skyRbt);
-
-        A.setTranslation(g_skyRbt.getTranslation());
-        A.setRotation(g_skyRbt.getRotation());
+        T = transFact(g_skyRbt);
+        R = linFact(g_skyRbt);
       }
       else { // world sky frame
         cout << "world sky frame\n";
       //we need to invert the sign of rotation => need to invert both rotation and translation 
-        // Matrix4 identity = Matrix4();
-        // T = transFact(identity);
-        // R = linFact(g_skyRbt);
-
-        A.setTranslation(RigTForm().getTranslation());
-        A.setRotation(g_skyRbt.getRotation());
+        Matrix4 identity = Matrix4();
+        T = transFact(identity);
+        R = linFact(g_skyRbt);
 
         //this code 
       }
@@ -439,17 +415,12 @@ static void motion(const int x, const int y) {
 
   else if (cameraStatus == CAMERA_CUBE1) { // when the current eyeframe is cube 1
     if (manipulationStatus == MANIPULATION_CUBE1) { //manipulation is cub1
-      // T = transFact(g_objectRbt[0]);
-      // R = linFact(g_objectRbt[0]);
-
-      A.setTranslation(g_objectRbt[0].getTranslation());
-      A.setRotation(g_objectRbt[0].getRotation());
+      T = transFact(g_objectRbt[0]);
+      R = linFact(g_objectRbt[0]);
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) { //manipulation is cube2
-      // T = transFact(g_object2Rbt[0]);
-      // R = linFact(g_objectRbt[0]);
-      A.setTranslation(g_object2Rbt[0].getTranslation());
-      A.setRotation(g_objectRbt[0].getRotation());
+      T = transFact(g_object2Rbt[0]);
+      R = linFact(g_objectRbt[0]);
     }
     else { //manipulation is skycamera - NOT ALLOWED!
       return;
@@ -460,16 +431,12 @@ static void motion(const int x, const int y) {
 
   else { //when the current eyeframe is cube2
     if (manipulationStatus == MANIPULATION_CUBE1) {
-      // T = transFact(g_objectRbt[0]);
-      // R = linFact(g_object2Rbt[0]);
-      A.setTranslation(g_objectRbt[0].getTranslation());
-      A.setRotation(g_object2Rbt[0].getRotation());
+      T = transFact(g_objectRbt[0]);
+      R = linFact(g_object2Rbt[0]);
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) {
-      // T = transFact(g_object2Rbt[0]);
-      // R = linFact(g_object2Rbt[0]);
-      A.setTranslation(g_object2Rbt[0].getTranslation());
-      A.setRotation(g_object2Rbt[0].getRotation());
+      T = transFact(g_object2Rbt[0]);
+      R = linFact(g_object2Rbt[0]);
     }
     else { //manipulation is sky camera - NOT ALLOWED!
       return;
@@ -478,48 +445,35 @@ static void motion(const int x, const int y) {
     }
   }
 
-  RigTForm m;
+  Matrix4 m;
   if (g_mouseLClickButton && !g_mouseRClickButton) { // left button down?
     if ((cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY) || (cameraStatus == CAMERA_CUBE1 && manipulationStatus == MANIPULATION_CUBE1
     || (cameraStatus == CAMERA_CUBE2 && manipulationStatus == MANIPULATION_CUBE2)
     )) {
-      // m = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
-      RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
-      RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(-dx));
-      m = xRotation * yRotation;
-
-      // cout << "rotation part 1\n";
-
-      PrintTForm(m);
+      m = Matrix4::makeXRotation(dy) * Matrix4::makeYRotation(-dx);
     }
     else {
-      // m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
-      RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(-dy));
-      RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(dx));
-      m = xRotation * yRotation;
-
-      // cout << "rotation part 2\n";
-      PrintTForm(m);
+      m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
     }
     
   }
   else if (g_mouseRClickButton && !g_mouseLClickButton) { // right button down?
     if (cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY && worldSkyFrameStatus == WORLDSKY) {
-      m = RigTForm().setTranslation(Cvec3(-dx, -dy, 0) * 0.01);
+      m = Matrix4::makeTranslation(Cvec3(-dx, -dy, 0) * 0.01);
     }
     else {
-      m = RigTForm().setTranslation(Cvec3(dx, dy, 0) * 0.01);
+      m = Matrix4::makeTranslation(Cvec3(dx, dy, 0) * 0.01);
     }
     
   }
   else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton)) {  // middle or (left and right) button down?
-    m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * 0.01);
+    m = Matrix4::makeTranslation(Cvec3(0, 0, -dy) * 0.01);
   }
 
   
 
   
-  
+  A = T * R;
   AMAI = A * m * inv(A);
 
 
@@ -527,27 +481,15 @@ static void motion(const int x, const int y) {
 
   if (g_mouseClickDown) {
     if (manipulationStatus == MANIPULATION_CUBE1) {
-      cout << "manipulating cube1\n";
-      cout << "before manipulation is ";
-      PrintTForm(g_objectRbt[0]);
       g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
-      cout << "after manipulation is ";
-      PrintTForm(g_objectRbt[0]);
-      cout << "AMAI is \n";
-      PrintTForm(AMAI);
-      
   
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) {
-      cout << "manipulating cube2\n";
       g_object2Rbt[0] = AMAI * g_object2Rbt[0]; // Simply right-multiply is WRONG
      
     }
     else {
-      cout << "manipulating sky\n";
       g_skyRbt = AMAI * g_skyRbt;
-      cout << "AMAI is \n";
-      PrintTForm(AMAI);
  
     }
     

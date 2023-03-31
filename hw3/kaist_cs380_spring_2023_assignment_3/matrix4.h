@@ -235,6 +235,14 @@ inline double norm2(const Matrix4& m) {
   return r;
 }
 
+inline Matrix4 cvec3ToMatrix4(const Cvec3& a) {
+   Matrix4 result = Matrix4();
+    for (int y = 0; y < 3; y++) {
+      result(y, 3) = a[y];
+    }
+    return result;
+}
+
 // computes inverse of affine matrix. assumes last row is [0,0,0,1]
 inline Matrix4 inv(const Matrix4& m) {
   Matrix4 r;                                              // default constructor initializes it to identity

@@ -64,26 +64,37 @@ public:
 
   RigTForm operator * (const RigTForm& a) const {
     // TODO
-    RigTForm result;
+    // RigTForm result;
 
-    Cvec3 t2 = a.getTranslation();
-    Quat r2 = a.getRotation();
+    // Cvec3 t2 = a.getTranslation();
+    // Quat r2 = a.getRotation();
 
-    Cvec3 t1 = t_;
-    Quat r1 = r_;
+    // Cvec3 t1 = t_;
+    // Quat r1 = r_;
 
-    Cvec4 r1t2 = quatToMatrix(r1) * cvec3ToCvec4(t2);
+    // Cvec4 r1t2 = quatToMatrix(r1) * cvec3ToCvec4(t2);
 
-    Cvec4 t1_r1t2 = cvec3ToCvec4(t1) + r1t2;
+    // Cvec4 t1_r1t2 = cvec3ToCvec4(t1) + r1t2;
 
-    Cvec3 resultTrans = cvec4ToCvec3(t1_r1t2);
+    // Cvec3 resultTrans = cvec4ToCvec3(t1_r1t2);
 
-    Quat resultQuaterion = r1 * r2;
+    // Quat resultQuaterion = r1 * r2;
 
-    result.setTranslation(resultTrans);
-    result.setRotation(resultQuaterion);
+    // result.setTranslation(resultTrans);
+    // result.setRotation(resultQuaterion);
 
-    return result;
+    // return result;
+
+    RigTForm r;
+
+    Cvec3 b = a.getTranslation();
+    Cvec4 c(b(0), b(1), c(2), 1);
+    Cvec4 d = quatToMatrix(r_) * c;
+    Cvec3 e(d(0), d(1), d(2));
+
+    r.setTranslation(t_ + e);
+    r.setRotation(r_ * a.getRotation());
+    return r;
 
 
 
@@ -116,23 +127,34 @@ inline void PrintTForm(const RigTForm& tform) {
 
 inline RigTForm inv(const RigTForm& tform) {
   // TODO
-  RigTForm result;
+  // RigTForm result;
 
-  Quat r = tform.getRotation();
-  Cvec3 t = tform.getTranslation();
-  Cvec4 tCvec4(t(0), t(1), t(2), 1);
+  // Quat r = tform.getRotation();
+  // Cvec3 t = tform.getTranslation();
+  // Cvec4 tCvec4(t(0), t(1), t(2), 1);
 
-  Matrix4 rInv = quatToMatrix(inv(r));
+  // Matrix4 rInv = quatToMatrix(inv(r));
 
-  Cvec4 transResult = rInv * tCvec4 * -1;
+  // Cvec4 transResult = rInv * tCvec4 * -1;
 
-  Cvec3 transResultCvec3 = cvec4ToCvec3(transResult);
-  result.setTranslation(transResultCvec3);
-  result.setRotation(inv(r));
+  // Cvec3 transResultCvec3 = cvec4ToCvec3(transResult);
+  // result.setTranslation(transResultCvec3);
+  // result.setRotation(inv(r));
 
-  return result;
+  // return result;
 
-  
+  RigTForm r;
+
+  Cvec3 b = tform.getTranslation();
+  Cvec4 c(b(0), b(1), b(2), 1);
+
+  Cvec4 d = quatToMatrix(inv(tform.getRotation())) * c;
+  Cvec3 e(d(0), d(1), d(2));
+
+  r.setTranslation(e * -1);
+  r.setRotation(inv(tform.getRotation()));
+
+  return r;
 
 
 }
