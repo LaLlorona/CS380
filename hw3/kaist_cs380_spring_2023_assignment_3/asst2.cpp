@@ -27,6 +27,7 @@
 #include "geometrymaker.h"
 #include "ppm.h"
 #include "glsupport.h"
+#include "arcball.h"
 
 using namespace std;      // for string, vector, iostream, and other standard C++ stuff
 // If your OS is LINUX, uncomment the line below.
@@ -186,7 +187,7 @@ struct Geometry {
 
 
 // Vertex buffer and index buffer associated with the ground and cube geometry
-static shared_ptr<Geometry> g_ground, g_cube;
+static shared_ptr<Geometry> g_ground, g_cube, g_arcball;
 
 // --------- Scene
 
@@ -200,6 +201,9 @@ static Cvec3f g_objectColors[1] = {Cvec3f(1, 0, 0)};
 //this part is implemented by kkm. fuck!
 static RigTForm g_object2Rbt[1] = {RigTForm().setTranslation(Cvec3(1,0,0))};  // defining other object
 static Cvec3f g_object2Colors[1] = {Cvec3f(0, 1, 0)};
+
+static RigTForm g_arcballRbt = RigTForm();
+static Cvec3f g_arcballColor = Cvec3f(1, 1, 1);
 
 static RigTForm g_myRbt = RigTForm().setTranslation(Cvec3(0.0, 0.25, 4.0));
 
@@ -252,6 +256,28 @@ static void initCubes() {
 
   makeCube(1, vtx.begin(), idx.begin());
   g_cube.reset(new Geometry(&vtx[0], &idx[0], vbLen, ibLen));
+}
+
+static void initArcball() {
+  int ibLen, vbLen;
+  int slices = 10;
+  int stacks = 10;
+
+  //radius 
+  // this part should be changed;
+  // float radius = 0.25 * min(g_windowHeight, g_windowWidth) * 0.001; 
+  float radius = 0.25 * min(g_windowHeight, g_windowWidth) * getScreenToEyeScale(g_arcballRbt.getTranslation()[3], g_frustFovY, g_windowHeight);
+  getSphereVbIbLen(slices, stacks, vbLen, ibLen);
+
+  vector<VertexPN> vtx(vbLen);
+  vector<unsigned short> idx(ibLen);
+
+  makeSphere(radius, slices, stacks, vtx.begin(), idx.begin());
+  g_arcball.reset(new Geometry(&vtx[0], &idx[0], vbLen, ibLen));
+
+
+
+
 }
 
 // takes a projection matrix and send to the the shaders
@@ -343,6 +369,18 @@ static void drawStuff() {
   sendModelViewNormalMatrix(curSS, MVM, NMVM);
   safe_glUniform3f(curSS.h_uColor, g_object2Colors[0][0], g_object2Colors[0][1], g_object2Colors[0][2]);
   g_cube->draw(curSS);
+
+  //draw arcball
+  MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt); 
+  NMVM = normalMatrix(MVM);
+  sendModelViewNormalMatrix(curSS, MVM, NMVM);
+
+  
+  safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  g_arcball->draw(curSS);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 }
 
 static void display() {
@@ -430,10 +468,6 @@ static void motion(const int x, const int y) {
 
         //this code 
       }
-      
-
-
-      
     }
   }
 
@@ -531,6 +565,11 @@ static void motion(const int x, const int y) {
    
 
       g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
+
+      if (cameraStatus != CAMERA_CUBE1) {
+
+        g_arcballRbt.setTranslation(g_objectRbt[0].getTranslation());
+      }
    
 
       
@@ -539,11 +578,19 @@ static void motion(const int x, const int y) {
     else if (manipulationStatus == MANIPULATION_CUBE2) {
 
       g_object2Rbt[0] = AMAI * g_object2Rbt[0]; // Simply right-multiply is WRONG
+
+      if (cameraStatus != CAMERA_CUBE2) {
+        g_arcballRbt.setTranslation(g_object2Rbt[0].getTranslation());
+      }
      
     }
     else {
 
       g_skyRbt = AMAI * g_skyRbt;
+
+      if (worldSkyFrameStatus == WORLDSKY) {
+        g_arcballRbt.setTranslation(RigTForm().getTranslation());
+      }
     
   
  
@@ -700,6 +747,7 @@ static void initShaders() {
 static void initGeometry() {
   initGround();
   initCubes(); //we can initialize other objects in here 
+  initArcball();
 }
 
 int main(int argc, char * argv[]) {
