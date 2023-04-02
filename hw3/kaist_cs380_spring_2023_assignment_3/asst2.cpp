@@ -68,6 +68,8 @@ static bool g_mouseLClickButton, g_mouseRClickButton, g_mouseMClickButton;
 static int g_mouseClickX, g_mouseClickY; // coordinates for mouse click event
 static int g_activeShader = 0;
 
+static double arcballInitialZ;
+
 struct ShaderState {
   GlProgram program;
 
@@ -266,7 +268,9 @@ static void initArcball() {
   //radius 
   // this part should be changed;
   // float radius = 0.25 * min(g_windowHeight, g_windowWidth) * 0.001; 
-  float radius = 0.25 * min(g_windowHeight, g_windowWidth) * getScreenToEyeScale(g_arcballRbt.getTranslation()[3], g_frustFovY, g_windowHeight);
+  // arcballInitialZ = g_arcballRbt.getTranslation()[2];
+  arcballInitialZ = g_skyRbt.getTranslation()[2] - g_arcballRbt.getTranslation()[2];
+  float radius = 1.0;
   getSphereVbIbLen(slices, stacks, vbLen, ibLen);
 
   vector<VertexPN> vtx(vbLen);
@@ -371,7 +375,10 @@ static void drawStuff() {
   g_cube->draw(curSS);
 
   //draw arcball
-  MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt); 
+  double scaleFactor = (arcballInitialZ -g_arcballRbt.getTranslation()[2]) / arcballInitialZ;
+  cout << "scale factor is " << scaleFactor;
+  MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
+  
   NMVM = normalMatrix(MVM);
   sendModelViewNormalMatrix(curSS, MVM, NMVM);
 
@@ -569,6 +576,7 @@ static void motion(const int x, const int y) {
       if (cameraStatus != CAMERA_CUBE1) {
 
         g_arcballRbt.setTranslation(g_objectRbt[0].getTranslation());
+        // initArcball();
       }
    
 
@@ -581,6 +589,7 @@ static void motion(const int x, const int y) {
 
       if (cameraStatus != CAMERA_CUBE2) {
         g_arcballRbt.setTranslation(g_object2Rbt[0].getTranslation());
+        // initArcball();
       }
      
     }
@@ -590,6 +599,7 @@ static void motion(const int x, const int y) {
 
       if (worldSkyFrameStatus == WORLDSKY) {
         g_arcballRbt.setTranslation(RigTForm().getTranslation());
+        // initArcball();
       }
     
   
