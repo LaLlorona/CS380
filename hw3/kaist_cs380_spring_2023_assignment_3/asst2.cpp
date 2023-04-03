@@ -68,9 +68,8 @@ static bool g_mouseLClickButton, g_mouseRClickButton, g_mouseMClickButton;
 static int g_mouseClickX, g_mouseClickY; // coordinates for mouse click event
 static int g_activeShader = 0;
 
-static double currentArcballSize = 1.0f;
-
-static double arcballInitialZ;
+static double g_arcballScreenRadius;
+static double g_currentArcballRadius;
 
 struct ShaderState {
   GlProgram program;
@@ -271,9 +270,9 @@ static void initArcball() {
   // this part should be changed;
   // float radius = 0.25 * min(g_windowHeight, g_windowWidth) * 0.001; 
   // arcballInitialZ = g_arcballRbt.getTranslation()[2];
-  arcballInitialZ = g_skyRbt.getTranslation()[2] - g_arcballRbt.getTranslation()[2];
-  float radius = 1.0;
-  currentArcballSize = radius;
+  // arcballInitialZ = g_skyRbt.getTranslation()[2] - g_arcballRbt.getTranslation()[2];
+  float radius = 1;
+  // currentArcballSize = radius;
   getSphereVbIbLen(slices, stacks, vbLen, ibLen);
 
   vector<VertexPN> vtx(vbLen);
@@ -402,23 +401,24 @@ static void drawStuff() {
   }
   
   if (canDrawArcball) {
-    double scaleFactor = norm((g_myRbt.getTranslation() -g_arcballRbt.getTranslation())) / arcballInitialZ;
+    double scaleFactor = getScreenToEyeScale((invEyeRbt * g_arcballRbt).getTranslation()(2), g_frustFovY, g_windowHeight);
     // double scaleFactor = invEyeRbt.getTranslation()[2];
-    currentArcballSize = scaleFactor;
-    if (scaleFactor > CS380_EPS) { //I dont know why I have to add this.. but anyway
+    g_currentArcballRadius = scaleFactor * g_arcballScreenRadius;
+    cout << "currentArcballSize is " << g_currentArcballRadius << "\n";
+    MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(g_currentArcballRadius,g_currentArcballRadius,g_currentArcballRadius));
       
-      cout << "currentArcballSize is " << currentArcballSize << "\n";
-      MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
-      
-      NMVM = normalMatrix(MVM);
-      sendModelViewNormalMatrix(curSS, MVM, NMVM);
+    NMVM = normalMatrix(MVM);
+    sendModelViewNormalMatrix(curSS, MVM, NMVM);
 
       
-      safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      g_arcball->draw(curSS);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
+    safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    g_arcball->draw(curSS);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    
+      
+      
+    
     
   }
   
@@ -438,6 +438,7 @@ static void display() {
 static void reshape(const int w, const int h) {
   g_windowWidth = w;
   g_windowHeight = h;
+  g_arcballScreenRadius = 0.25 * min(g_windowHeight, g_windowWidth);
   glViewport(0, 0, w, h);
   cerr << "Size of window is now " << w << "x" << h << endl;
   updateFrustFovY();
@@ -452,7 +453,7 @@ Cvec3 isIntersectWithArcball(double clickX, double clickY) {
   Cvec3 u = ray;
   Cvec3 o = g_myRbt.getTranslation();
   Cvec3 center = g_arcballRbt.getTranslation();
-  double r = currentArcballSize;
+  double r = g_currentArcballRadius;
 
   double a = norm2(ray);
   double b = 2 * dot(ray, (o - center));
@@ -505,8 +506,8 @@ static void motion(const int x, const int y) {
     Quat quatV2 = Quat(0, v2(0), v2(1), v2(2));
     Quat quatV1 = Quat(0, v1(0), v1(1), v1(2));
 
-    targetQuaternion = (quatV2 * -1 *quatV1);
-    cout << "intersect with arcall and the angle is\n";
+    targetQuaternion =  quatV2 * (quatV1 * -1);
+    
     
     
     
