@@ -403,10 +403,11 @@ static void drawStuff() {
   
   if (canDrawArcball) {
     double scaleFactor = norm((g_myRbt.getTranslation() -g_arcballRbt.getTranslation())) / arcballInitialZ;
+    // double scaleFactor = invEyeRbt.getTranslation()[2];
     currentArcballSize = scaleFactor;
     if (scaleFactor > CS380_EPS) { //I dont know why I have to add this.. but anyway
       
-      // cout << "currentArcballSize is " << currentArcballSize << "\n";
+      cout << "currentArcballSize is " << currentArcballSize << "\n";
       MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
       
       NMVM = normalMatrix(MVM);
@@ -472,7 +473,7 @@ Cvec3 isIntersectWithArcball(double clickX, double clickY) {
 }
 
 bool IsZeroVector(Cvec3& a) {
-  return (a(0) == 0 && a(1) == 0 && a(2) == 0);
+  return ((a(0) < CS380_EPS) && (a(1) < CS380_EPS) && (a(2) < CS380_EPS));
 }
 
 static void motion(const int x, const int y) {
@@ -499,8 +500,8 @@ static void motion(const int x, const int y) {
   
 
   if (!IsZeroVector(p1) && !IsZeroVector(p2)) {
-    double angle = acos(dot(p1, p2) / (norm(p1) * norm(p2)));
-    if (!(angle != angle)) { // check nan
+    double angle = acos(dot(p1, p2) / (norm(p1) * norm(p2))) * 2;
+    if (angle > 0.01) { // check nan
       
       needToFollowArcball = true;
       
