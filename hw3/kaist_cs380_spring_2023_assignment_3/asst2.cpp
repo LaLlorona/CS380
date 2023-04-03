@@ -73,6 +73,7 @@ static double g_arcballScreenRadius;
 static int g_cameraIndex = -1; //-1 for sky, 0, 1, 2... g_numObject - 1 for object
 static int g_objectIndex = 0; // current manipulation object. 0, 1, 2 ... g_numObject - 1
 static int g_numObject; //number of objects in the scene
+static bool g_canDrawArcball = false;
 
 struct ShaderState
 {
@@ -207,28 +208,14 @@ static RigTForm g_skyRbt = RigTForm().setTranslation(Cvec3(0.0, 0.25, 4.0));
 static RigTForm g_objectRbt[2] = {RigTForm().setTranslation(Cvec3(-1, 0, 0)), RigTForm().setTranslation(Cvec3(1, 0, 0))}; // currently only 1 obj is defined
 static Cvec3f g_objectColors[2] = {Cvec3f(1, 0, 0), Cvec3f(0, 1, 0)};
 
-static RigTForm g_arcballRbt = RigTForm();
+static RigTForm g_arcballRbt = g_objectRbt[g_objectIndex];
 static Cvec3f g_arcballColor = Cvec3f(1, 1, 1);
 
 static RigTForm g_myRbt = RigTForm().setTranslation(Cvec3(0.0, 0.25, 4.0));
 
-// static int cameraStatus = 0;
-// static int manipulationStatus = 0;
 static int worldSkyFrameStatus = 0; // 0: sky sky, 1: world sky
 
-// enum CAMERA_STATUS
-// {
-//   CAMERA_SKY,
-//   CAMERA_CUBE1,
-//   CAMERA_CUBE2,
-// };
 
-// enum MANIPULATION_STATUS
-// {
-//   MANIPULATION_CUBE1,
-//   MANIPULATION_CUBE2,
-//   MANIPULATION_SKY,
-// };
 
 enum WORLDSKYFRAME_STATUS
 {
@@ -237,6 +224,29 @@ enum WORLDSKYFRAME_STATUS
 };
 
 ///////////////// END OF G L O B A L S //////////////////////////////////////////////////
+
+static void updateCanDrawArcball() {
+  if ((g_cameraIndex == -1 && g_objectIndex == -1 && worldSkyFrameStatus == WORLDSKY) || (g_cameraIndex != g_objectIndex)) {
+    g_canDrawArcball = true;
+  }
+  else {
+    g_canDrawArcball = false;
+  }
+  cout << "current can draw arcabll is " << g_canDrawArcball << "\n";
+}
+
+static void changeArcballPosition() {
+  if (!g_canDrawArcball) {
+    return;
+  }
+
+  if (g_cameraIndex == -1 && g_objectIndex == -1 && worldSkyFrameStatus == WORLDSKY) {
+    g_arcballRbt = RigTForm();
+  }
+  else {
+    g_arcballRbt = g_objectRbt[g_objectIndex];
+  }
+}
 
 static void initGround()
 {
@@ -336,14 +346,7 @@ static void drawStuff()
   else {
     g_myRbt = g_objectRbt[g_cameraIndex];
   }
-  // else if (cameraStatus == 1)
-  // {
-  //   g_myRbt = g_objectRbt[0];
-  // }
-  // else
-  // {
-  //   g_myRbt = g_objectRbt[1];
-  // }
+ 
 
   const RigTForm eyeRbt = g_myRbt; // eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
   const RigTForm invEyeRbt = inv(eyeRbt);
@@ -379,19 +382,23 @@ static void drawStuff()
   g_cube->draw(curSS);
 
   // draw Arcball
-  double scaleFactor = getScreenToEyeScale((invEyeRbt * g_arcballRbt).getTranslation()(2), g_frustFovY, g_windowHeight);
-  // double scaleFactor = invEyeRbt.getTranslation()[2];
-  g_currentArcballRadius = scaleFactor * g_arcballScreenRadius;
-  cout << "currentArcballSize is " << g_currentArcballRadius << "\n";
-  MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(g_currentArcballRadius, g_currentArcballRadius, g_currentArcballRadius));
 
-  NMVM = normalMatrix(MVM);
-  sendModelViewNormalMatrix(curSS, MVM, NMVM);
+  if (g_canDrawArcball) {
+    double scaleFactor = getScreenToEyeScale((invEyeRbt * g_arcballRbt).getTranslation()(2), g_frustFovY, g_windowHeight);
+    // double scaleFactor = invEyeRbt.getTranslation()[2];
+    g_currentArcballRadius = scaleFactor * g_arcballScreenRadius;
+    // cout << "currentArcballSize is " << g_currentArcballRadius << "\n";
+    MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(g_currentArcballRadius, g_currentArcballRadius, g_currentArcballRadius));
 
-  safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  g_arcball->draw(curSS);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    NMVM = normalMatrix(MVM);
+    sendModelViewNormalMatrix(curSS, MVM, NMVM);
+
+    safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    g_arcball->draw(curSS);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
+  
 }
 
 static void display()
@@ -430,7 +437,7 @@ static void motion(const int x, const int y)
   { // when current eyeframe is sky frame
 
     if (g_objectIndex != -1)
-    { // when the current manipulation is cube1
+    { // when the current manipulation not camera
       A.setTranslation(g_objectRbt[g_objectIndex].getTranslation());
       A.setRotation(g_skyRbt.getRotation());
     }
@@ -463,65 +470,21 @@ static void motion(const int x, const int y)
     }
   }
 
-  // else if (cameraStatus == CAMERA_CUBE1)
-  // { // when the current eyeframe is cube 1
-  //   if (manipulationStatus == MANIPULATION_CUBE1)
-  //   { // manipulation is cub1
-  //     A.setTranslation(g_objectRbt[0].getTranslation());
-  //     A.setRotation(g_objectRbt[0].getRotation());
-  //   }
-  //   else if (manipulationStatus == MANIPULATION_CUBE2)
-  //   { // manipulation is cube2
-  //     A.setTranslation(g_objectRbt[1].getTranslation());
-  //     A.setRotation(g_objectRbt[0].getRotation());
-  //   }
-  //   else
-  //   { // manipulation is skycamera - NOT ALLOWED!
-  //     return;
-  //   }
-  // }
-
-  // else
-  // { // when the current eyeframe is cube2
-  //   if (manipulationStatus == MANIPULATION_CUBE1)
-  //   {
-
-  //     A.setTranslation(g_objectRbt[0].getTranslation());
-  //     A.setRotation(g_objectRbt[1].getRotation());
-  //   }
-  //   else if (manipulationStatus == MANIPULATION_CUBE2)
-  //   {
-
-  //     A.setTranslation(g_objectRbt[1].getTranslation());
-  //     A.setRotation(g_objectRbt[1].getRotation());
-  //   }
-  //   else
-  //   { // manipulation is sky camera - NOT ALLOWED!
-  //     return;
-  //   }
-  // }
 
   RigTForm m;
   if (g_mouseLClickButton && !g_mouseRClickButton)
   { // left button down?
     if ((g_cameraIndex == -1 && g_objectIndex == -1) || (g_cameraIndex == g_objectIndex))
     {
-      // m = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
-
       RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
       RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(-dx));
       m = xRotation * yRotation;
-
-      // cout << "rotation part 1\n";
     }
     else
     {
-      // m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
       RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(-dy));
       RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(dx));
       m = xRotation * yRotation;
-
-      // cout << "rotation part 2\n";
     }
   }
   else if (g_mouseRClickButton && !g_mouseLClickButton)
@@ -549,24 +512,9 @@ static void motion(const int x, const int y)
     }
     else {
       g_objectRbt[g_objectIndex] = AMAI * g_objectRbt[g_objectIndex];
+      changeArcballPosition();
     }
-    // if (manipulationStatus == MANIPULATION_CUBE1)
-    // {
-
-    //   g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
-    // }
-    // else if (manipulationStatus == MANIPULATION_CUBE2)
-    // {
-
-    //   g_objectRbt[1] = AMAI * g_objectRbt[1]; // Simply right-multiply is WRONG
-    // }
-    // else
-    // {
-
-    
-    // }
-
-    // g_objectRbt[0] *= m; // Simply right-multiply is WRONG
+  
     glutPostRedisplay(); // we always redraw if we changed the scene
   }
 
@@ -619,21 +567,10 @@ static void keyboard(const unsigned char key, const int x, const int y)
     if (g_cameraIndex >= g_numObject) {
       g_cameraIndex = -1;
     }
-    // if (cameraStatus == 0)
-    // {
 
-    //   cameraStatus = 1;
-    // }
-    // else if (cameraStatus == 1)
-    // {
+    updateCanDrawArcball();
+    changeArcballPosition();
 
-    //   cameraStatus = 2;
-    // }
-    // else
-    // {
-
-    //   cameraStatus = 0;
-    // }
 
     break;
   case 'o':
@@ -642,23 +579,9 @@ static void keyboard(const unsigned char key, const int x, const int y)
     if (g_objectIndex >= g_numObject) {
       g_objectIndex = -1;
     }
-    // if (manipulationStatus == 0)
-    // {
+    updateCanDrawArcball();
+    changeArcballPosition();
 
-    //   manipulationStatus = 1;
-    // }
-    // else if (manipulationStatus == 1)
-    // {
-
-    //   manipulationStatus = 2;
-    // }
-    // else
-    // {
-
-    //   manipulationStatus = 0;
-    // }
-    // o 키가 눌렸을 때 현재 manipulated 되고 있는 object 를 바꿔야 함
-    //
     break;
   case 'm':
 
@@ -670,6 +593,8 @@ static void keyboard(const unsigned char key, const int x, const int y)
     {
       worldSkyFrameStatus = 0;
     }
+    updateCanDrawArcball();
+    changeArcballPosition();
 
     Matrix4 baseMatrix;
     for (int y = 0; y < 4; y++)
@@ -750,6 +675,7 @@ int main(int argc, char *argv[])
     g_numObject = 2;
     g_cameraIndex = -1;
     g_objectIndex = 0;
+    g_canDrawArcball = true;
 
     initGlutState(argc, argv);
 
