@@ -68,6 +68,8 @@ static bool g_mouseLClickButton, g_mouseRClickButton, g_mouseMClickButton;
 static int g_mouseClickX, g_mouseClickY; // coordinates for mouse click event
 static int g_activeShader = 0;
 
+static double currentArcballSize = 1.0f;
+
 static double arcballInitialZ;
 
 struct ShaderState {
@@ -271,6 +273,7 @@ static void initArcball() {
   // arcballInitialZ = g_arcballRbt.getTranslation()[2];
   arcballInitialZ = g_skyRbt.getTranslation()[2] - g_arcballRbt.getTranslation()[2];
   float radius = 1.0;
+  currentArcballSize = radius;
   getSphereVbIbLen(slices, stacks, vbLen, ibLen);
 
   vector<VertexPN> vtx(vbLen);
@@ -400,20 +403,24 @@ static void drawStuff() {
   
   if (canDrawArcball) {
     double scaleFactor = norm((g_myRbt.getTranslation() -g_arcballRbt.getTranslation())) / arcballInitialZ;
-    cout << "scale factor is " << scaleFactor;
-    MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
-    
-    NMVM = normalMatrix(MVM);
-    sendModelViewNormalMatrix(curSS, MVM, NMVM);
+    currentArcballSize = scaleFactor;
+    if (scaleFactor > CS380_EPS) { //I dont know why I have to add this.. but anyway
+      
+      // cout << "currentArcballSize is " << currentArcballSize << "\n";
+      MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
+      
+      NMVM = normalMatrix(MVM);
+      sendModelViewNormalMatrix(curSS, MVM, NMVM);
 
+      
+      safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      g_arcball->draw(curSS);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
     
-    safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    g_arcball->draw(curSS);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
   
-
 }
 
 static void display() {
@@ -436,43 +443,97 @@ static void reshape(const int w, const int h) {
   glutPostRedisplay();
 }
 
-static void motion(const int x, const int y) {
-  //we need to change value of m using
-  //AMA-1. A = TR
+Cvec3 isIntersectWithArcball(double clickX, double clickY) {
+  Cvec2 clickInput(clickX, clickY);
+
+  Cvec3 ray = getModelViewRay(clickInput, g_frustFovY, g_windowWidth, g_windowHeight);
+
+  Cvec3 u = ray;
+  Cvec3 o = g_myRbt.getTranslation();
+  Cvec3 center = g_arcballRbt.getTranslation();
+  double r = currentArcballSize;
+
+  double a = norm2(ray);
+  double b = 2 * dot(ray, (o - center));
+  double c = norm2(o - center) - r * r;
+
+  bool isIntersect = b * b - 4 * a * c > 0;
+
+  if (isIntersect) {
+    double d = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
+    Cvec3 result = o + u * d;
+    return result;
+  }
+  else {
+    Cvec3();
+  }
 
   
-  
+}
+
+bool IsZeroVector(Cvec3& a) {
+  return (a(0) == 0 && a(1) == 0 && a(2) == 0);
+}
+
+static void motion(const int x, const int y) {
 
   const double dx = x - g_mouseClickX;
   const double dy = g_windowHeight - y - 1 - g_mouseClickY;
 
-  // Matrix4 T;
-  // Matrix4 R;
-  // Matrix4 A;
-  // Matrix4 AMAI;
+  //this part is checking clicked position information
+
+  Cvec2 clickInput(g_mouseClickX, g_mouseClickY);
+
+ 
+
+  Cvec3 p1 = isIntersectWithArcball(g_mouseClickX, g_mouseClickY);
+  Cvec3 p2 = isIntersectWithArcball(g_mouseClickX + dx, g_mouseClickY + dy);
+  
+
+  Cvec3 v1 = p1 - g_arcballRbt.getTranslation();
+  Cvec3 v2 = p2 - g_arcballRbt.getTranslation();
+
+  bool needToFollowArcball = false;
+  Quat targetQuaternion = Quat();
+
+  
+
+  if (!IsZeroVector(p1) && !IsZeroVector(p2)) {
+    double angle = acos(dot(p1, p2) / (norm(p1) * norm(p2)));
+    if (!(angle != angle)) { // check nan
+      
+      needToFollowArcball = true;
+      
+      Cvec3 axis = cross(p1, p2) / norm(cross(p1, p2));
+
+      targetQuaternion(1)  = axis(0);
+      targetQuaternion(2) = axis(1);
+      targetQuaternion(3) = axis(2);
+      targetQuaternion(0) = cos(angle / 2);
+
+      cout << "intersect with arcall and the angle is\n";
+      cout << angle << "\n";
+    }
+    
+  }
+  else {
+    cout << "do not intersect with arcball\n";
+  }
+
+  
+
+
 
   RigTForm A;
-
   RigTForm AMAI;
-  
-
-
-  
 
   if (cameraStatus == CAMERA_SKY) { // when current eyeframe is sky frame
     if (manipulationStatus == MANIPULATION_CUBE1) { // when the current manipulation is cube1
-      // T = transFact(g_objectRbt[0]);
-      // R = linFact(g_skyRbt);
 
       A.setTranslation(g_objectRbt[0].getTranslation());
       A.setRotation(g_skyRbt.getRotation());
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) { // when the current manipulation is the cube 2
-      
-      
-      
-      // T = transFact(g_object2Rbt[0]);
-      // R = linFact(g_skyRbt);
 
       A.setTranslation(g_object2Rbt[0].getTranslation());
       A.setRotation(g_skyRbt.getRotation());
@@ -482,19 +543,12 @@ static void motion(const int x, const int y) {
     else { //when the current manipulation is the skyframe => we need to handle input m in this condition
 
       if (worldSkyFrameStatus == SKYSKY) { // sky sky frame
-   
-        // T = transFact(g_skyRbt);
-        // R = linFact(g_skyRbt);
+
 
         A.setTranslation(g_skyRbt.getTranslation());
         A.setRotation(g_skyRbt.getRotation());
       }
       else { // world sky frame
-    
-      //we need to invert the sign of rotation => need to invert both rotation and translation 
-        // Matrix4 identity = Matrix4();
-        // T = transFact(identity);
-        // R = linFact(g_skyRbt);
 
         A.setTranslation(RigTForm().getTranslation());
         A.setRotation(g_skyRbt.getRotation());
@@ -506,42 +560,35 @@ static void motion(const int x, const int y) {
 
   else if (cameraStatus == CAMERA_CUBE1) { // when the current eyeframe is cube 1
     if (manipulationStatus == MANIPULATION_CUBE1) { //manipulation is cub1
-      // T = transFact(g_objectRbt[0]);
-      // R = linFact(g_objectRbt[0]);
 
       A.setTranslation(g_objectRbt[0].getTranslation());
       A.setRotation(g_objectRbt[0].getRotation());
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) { //manipulation is cube2
-      // T = transFact(g_object2Rbt[0]);
-      // R = linFact(g_objectRbt[0]);
+
       A.setTranslation(g_object2Rbt[0].getTranslation());
       A.setRotation(g_objectRbt[0].getRotation());
     }
     else { //manipulation is skycamera - NOT ALLOWED!
       return;
-      // T = transFact(g_skyRbt);
-      // R = linFact(g_objectRbt[0]);
+
     }
   }
 
   else { //when the current eyeframe is cube2
     if (manipulationStatus == MANIPULATION_CUBE1) {
-      // T = transFact(g_objectRbt[0]);
-      // R = linFact(g_object2Rbt[0]);
+
       A.setTranslation(g_objectRbt[0].getTranslation());
       A.setRotation(g_object2Rbt[0].getRotation());
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) {
-      // T = transFact(g_object2Rbt[0]);
-      // R = linFact(g_object2Rbt[0]);
+
       A.setTranslation(g_object2Rbt[0].getTranslation());
       A.setRotation(g_object2Rbt[0].getRotation());
     }
     else { //manipulation is sky camera - NOT ALLOWED!
       return;
-      // T = transFact(g_skyRbt);
-      // R = linFact(g_object2Rbt[0]);
+
     }
   }
 
@@ -550,24 +597,23 @@ static void motion(const int x, const int y) {
     if ((cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY) || (cameraStatus == CAMERA_CUBE1 && manipulationStatus == MANIPULATION_CUBE1
     || (cameraStatus == CAMERA_CUBE2 && manipulationStatus == MANIPULATION_CUBE2)
     )) {
-      // m = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
-   
       RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
       RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(-dx));
       m = xRotation * yRotation;
 
-      // cout << "rotation part 1\n";
+      if (needToFollowArcball) {
+        m = RigTForm().setRotation(targetQuaternion);
+      }
 
-    
     }
     else {
-      // m = Matrix4::makeXRotation(-dy) * Matrix4::makeYRotation(dx);
       RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(-dy));
       RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(dx));
       m = xRotation * yRotation;
 
-      // cout << "rotation part 2\n";
-  
+      if (needToFollowArcball) {
+        m = RigTForm().setRotation(targetQuaternion);
+      }
     }
     
   }
@@ -578,21 +624,12 @@ static void motion(const int x, const int y) {
     else {
       m = RigTForm().setTranslation(Cvec3(dx, dy, 0) * 0.01);
     }
-    
   }
   else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton)) {  // middle or (left and right) button down?
     m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * 0.01);
-    // m = Matrix4::makeTranslation(Cvec3(0, 0, -dy) * 0.01);
   }
 
-  
-
-  
-  
   AMAI = A * m * inv(A);
-
-
-
 
   if (g_mouseClickDown) {
     if (manipulationStatus == MANIPULATION_CUBE1) {
@@ -603,12 +640,7 @@ static void motion(const int x, const int y) {
       if (cameraStatus != CAMERA_CUBE1) {
 
         g_arcballRbt.setTranslation(g_objectRbt[0].getTranslation());
-        // initArcball();
       }
-   
-
-      
-  
     }
     else if (manipulationStatus == MANIPULATION_CUBE2) {
 
@@ -616,7 +648,6 @@ static void motion(const int x, const int y) {
 
       if (cameraStatus != CAMERA_CUBE2) {
         g_arcballRbt.setTranslation(g_object2Rbt[0].getTranslation());
-        // initArcball();
       }
      
     }
@@ -626,14 +657,9 @@ static void motion(const int x, const int y) {
 
       if (worldSkyFrameStatus == WORLDSKY) {
         g_arcballRbt.setTranslation(RigTForm().getTranslation());
-        // initArcball();
       }
-    
-  
- 
+
     }
-    
-    // g_objectRbt[0] *= m; // Simply right-multiply is WRONG
     glutPostRedisplay(); // we always redraw if we changed the scene
   }
 
