@@ -499,22 +499,16 @@ static void motion(const int x, const int y) {
 
   
 
-  if (!IsZeroVector(p1) && !IsZeroVector(p2)) {
-    double angle = acos(dot(p1, p2) / (norm(p1) * norm(p2))) * 2;
-    if (angle > 0.01) { // check nan
+  if (!IsZeroVector(p1)) {
+    needToFollowArcball = true;
       
-      needToFollowArcball = true;
-      
-      Cvec3 axis = cross(p1, p2) / norm(cross(p1, p2));
+    Quat quatV2 = Quat(0, v2(0), v2(1), v2(2));
+    Quat quatV1 = Quat(0, v1(0), v1(1), v1(2));
 
-      targetQuaternion(1)  = axis(0);
-      targetQuaternion(2) = axis(1);
-      targetQuaternion(3) = axis(2);
-      targetQuaternion(0) = cos(angle / 2);
-
-      cout << "intersect with arcall and the angle is\n";
-      cout << angle << "\n";
-    }
+    targetQuaternion = (quatV2 * -1 *quatV1);
+    cout << "intersect with arcall and the angle is\n";
+    
+    
     
   }
   else {
@@ -633,6 +627,10 @@ static void motion(const int x, const int y) {
   AMAI = A * m * inv(A);
 
   if (g_mouseClickDown) {
+    if (needToFollowArcball) {
+      g_arcballRbt = AMAI * g_arcballRbt;
+    }
+
     if (manipulationStatus == MANIPULATION_CUBE1) {
    
 
