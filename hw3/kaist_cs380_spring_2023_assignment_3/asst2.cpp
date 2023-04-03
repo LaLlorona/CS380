@@ -375,18 +375,44 @@ static void drawStuff() {
   g_cube->draw(curSS);
 
   //draw arcball
-  double scaleFactor = (arcballInitialZ -g_arcballRbt.getTranslation()[2]) / arcballInitialZ;
-  cout << "scale factor is " << scaleFactor;
-  MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
-  
-  NMVM = normalMatrix(MVM);
-  sendModelViewNormalMatrix(curSS, MVM, NMVM);
 
+  bool canDrawArcball = false;
+  if (cameraStatus == CAMERA_SKY) {
+    if (manipulationStatus != MANIPULATION_SKY) {
+      canDrawArcball = true;
+    }
+    else {
+      if (worldSkyFrameStatus == WORLDSKY) {
+        canDrawArcball = true;
+      }
+    }
+  }
+  if (cameraStatus == CAMERA_CUBE1) {
+    if (manipulationStatus != MANIPULATION_CUBE1) {
+      canDrawArcball = true;
+    }
+  }
+  if (cameraStatus == CAMERA_CUBE2) {
+    if (manipulationStatus != MANIPULATION_CUBE2) {
+      canDrawArcball = true;
+    }
+  }
   
-  safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  g_arcball->draw(curSS);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  if (canDrawArcball) {
+    double scaleFactor = norm((g_myRbt.getTranslation() -g_arcballRbt.getTranslation())) / arcballInitialZ;
+    cout << "scale factor is " << scaleFactor;
+    MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(scaleFactor,scaleFactor,scaleFactor));
+    
+    NMVM = normalMatrix(MVM);
+    sendModelViewNormalMatrix(curSS, MVM, NMVM);
+
+    
+    safe_glUniform3f(curSS.h_uColor, g_arcballColor[0], g_arcballColor[1], g_arcballColor[2]);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    g_arcball->draw(curSS);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
+  
 
 }
 
@@ -556,6 +582,7 @@ static void motion(const int x, const int y) {
   }
   else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton)) {  // middle or (left and right) button down?
     m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * 0.01);
+    // m = Matrix4::makeTranslation(Cvec3(0, 0, -dy) * 0.01);
   }
 
   
