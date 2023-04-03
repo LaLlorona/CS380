@@ -212,23 +212,23 @@ static Cvec3f g_arcballColor = Cvec3f(1, 1, 1);
 
 static RigTForm g_myRbt = RigTForm().setTranslation(Cvec3(0.0, 0.25, 4.0));
 
-static int cameraStatus = 0;
-static int manipulationStatus = 0;
+// static int cameraStatus = 0;
+// static int manipulationStatus = 0;
 static int worldSkyFrameStatus = 0; // 0: sky sky, 1: world sky
 
-enum CAMERA_STATUS
-{
-  CAMERA_SKY,
-  CAMERA_CUBE1,
-  CAMERA_CUBE2,
-};
+// enum CAMERA_STATUS
+// {
+//   CAMERA_SKY,
+//   CAMERA_CUBE1,
+//   CAMERA_CUBE2,
+// };
 
-enum MANIPULATION_STATUS
-{
-  MANIPULATION_CUBE1,
-  MANIPULATION_CUBE2,
-  MANIPULATION_SKY,
-};
+// enum MANIPULATION_STATUS
+// {
+//   MANIPULATION_CUBE1,
+//   MANIPULATION_CUBE2,
+//   MANIPULATION_SKY,
+// };
 
 enum WORLDSKYFRAME_STATUS
 {
@@ -329,18 +329,21 @@ static void drawStuff()
   sendProjectionMatrix(curSS, projmat);
 
   // use the skyRbt as the eyeRbt
-  if (cameraStatus == 0)
+  if (g_cameraIndex == -1)
   {
     g_myRbt = g_skyRbt;
   }
-  else if (cameraStatus == 1)
-  {
-    g_myRbt = g_objectRbt[0];
+  else {
+    g_myRbt = g_objectRbt[g_cameraIndex];
   }
-  else
-  {
-    g_myRbt = g_objectRbt[1];
-  }
+  // else if (cameraStatus == 1)
+  // {
+  //   g_myRbt = g_objectRbt[0];
+  // }
+  // else
+  // {
+  //   g_myRbt = g_objectRbt[1];
+  // }
 
   const RigTForm eyeRbt = g_myRbt; // eyeframe. rbt means rigit body transformation. in this assignment, we need to change this eyerbt.
   const RigTForm invEyeRbt = inv(eyeRbt);
@@ -423,18 +426,15 @@ static void motion(const int x, const int y)
   RigTForm A;
 
   RigTForm AMAI;
-  if (cameraStatus == CAMERA_SKY)
+  if (g_cameraIndex == -1)
   { // when current eyeframe is sky frame
-    if (manipulationStatus == MANIPULATION_CUBE1)
+
+    if (g_objectIndex != -1)
     { // when the current manipulation is cube1
-      A.setTranslation(g_objectRbt[0].getTranslation());
+      A.setTranslation(g_objectRbt[g_objectIndex].getTranslation());
       A.setRotation(g_skyRbt.getRotation());
     }
-    else if (manipulationStatus == MANIPULATION_CUBE2)
-    { // when the current manipulation is the cube 2
-      A.setTranslation(g_objectRbt[1].getTranslation());
-      A.setRotation(g_skyRbt.getRotation());
-    }
+    
     else
     { // when the current manipulation is the skyframe => we need to handle input m in this condition
 
@@ -453,48 +453,58 @@ static void motion(const int x, const int y)
     }
   }
 
-  else if (cameraStatus == CAMERA_CUBE1)
-  { // when the current eyeframe is cube 1
-    if (manipulationStatus == MANIPULATION_CUBE1)
-    { // manipulation is cub1
-      A.setTranslation(g_objectRbt[0].getTranslation());
-      A.setRotation(g_objectRbt[0].getRotation());
-    }
-    else if (manipulationStatus == MANIPULATION_CUBE2)
-    { // manipulation is cube2
-      A.setTranslation(g_objectRbt[1].getTranslation());
-      A.setRotation(g_objectRbt[0].getRotation());
-    }
-    else
-    { // manipulation is skycamera - NOT ALLOWED!
+  else { //when current eyeframe is not sky frame
+    if (g_objectIndex == -1) {
       return;
+    }
+    else {
+      A.setTranslation(g_objectRbt[g_objectIndex].getTranslation());
+      A.setRotation(g_objectRbt[g_cameraIndex].getRotation());
     }
   }
 
-  else
-  { // when the current eyeframe is cube2
-    if (manipulationStatus == MANIPULATION_CUBE1)
-    {
+  // else if (cameraStatus == CAMERA_CUBE1)
+  // { // when the current eyeframe is cube 1
+  //   if (manipulationStatus == MANIPULATION_CUBE1)
+  //   { // manipulation is cub1
+  //     A.setTranslation(g_objectRbt[0].getTranslation());
+  //     A.setRotation(g_objectRbt[0].getRotation());
+  //   }
+  //   else if (manipulationStatus == MANIPULATION_CUBE2)
+  //   { // manipulation is cube2
+  //     A.setTranslation(g_objectRbt[1].getTranslation());
+  //     A.setRotation(g_objectRbt[0].getRotation());
+  //   }
+  //   else
+  //   { // manipulation is skycamera - NOT ALLOWED!
+  //     return;
+  //   }
+  // }
 
-      A.setTranslation(g_objectRbt[0].getTranslation());
-      A.setRotation(g_objectRbt[1].getRotation());
-    }
-    else if (manipulationStatus == MANIPULATION_CUBE2)
-    {
+  // else
+  // { // when the current eyeframe is cube2
+  //   if (manipulationStatus == MANIPULATION_CUBE1)
+  //   {
 
-      A.setTranslation(g_objectRbt[1].getTranslation());
-      A.setRotation(g_objectRbt[1].getRotation());
-    }
-    else
-    { // manipulation is sky camera - NOT ALLOWED!
-      return;
-    }
-  }
+  //     A.setTranslation(g_objectRbt[0].getTranslation());
+  //     A.setRotation(g_objectRbt[1].getRotation());
+  //   }
+  //   else if (manipulationStatus == MANIPULATION_CUBE2)
+  //   {
+
+  //     A.setTranslation(g_objectRbt[1].getTranslation());
+  //     A.setRotation(g_objectRbt[1].getRotation());
+  //   }
+  //   else
+  //   { // manipulation is sky camera - NOT ALLOWED!
+  //     return;
+  //   }
+  // }
 
   RigTForm m;
   if (g_mouseLClickButton && !g_mouseRClickButton)
   { // left button down?
-    if ((cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY) || (cameraStatus == CAMERA_CUBE1 && manipulationStatus == MANIPULATION_CUBE1 || (cameraStatus == CAMERA_CUBE2 && manipulationStatus == MANIPULATION_CUBE2)))
+    if ((g_cameraIndex == -1 && g_objectIndex == -1) || (g_cameraIndex == g_objectIndex))
     {
       // m = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
 
@@ -516,7 +526,7 @@ static void motion(const int x, const int y)
   }
   else if (g_mouseRClickButton && !g_mouseLClickButton)
   { // right button down?
-    if (cameraStatus == CAMERA_SKY && manipulationStatus == MANIPULATION_SKY && worldSkyFrameStatus == WORLDSKY)
+    if (g_cameraIndex == -1 && g_objectIndex == -1 && worldSkyFrameStatus == WORLDSKY)
     {
       m = RigTForm().setTranslation(Cvec3(-dx, -dy, 0) * 0.01);
     }
@@ -534,21 +544,27 @@ static void motion(const int x, const int y)
 
   if (g_mouseClickDown)
   {
-    if (manipulationStatus == MANIPULATION_CUBE1)
-    {
-
-      g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
+    if (g_objectIndex == -1) {
+        g_skyRbt = AMAI * g_skyRbt;
     }
-    else if (manipulationStatus == MANIPULATION_CUBE2)
-    {
-
-      g_objectRbt[1] = AMAI * g_objectRbt[1]; // Simply right-multiply is WRONG
+    else {
+      g_objectRbt[g_objectIndex] = AMAI * g_objectRbt[g_objectIndex];
     }
-    else
-    {
+    // if (manipulationStatus == MANIPULATION_CUBE1)
+    // {
 
-      g_skyRbt = AMAI * g_skyRbt;
-    }
+    //   g_objectRbt[0] = AMAI * g_objectRbt[0]; // Simply right-multiply is WRONG
+    // }
+    // else if (manipulationStatus == MANIPULATION_CUBE2)
+    // {
+
+    //   g_objectRbt[1] = AMAI * g_objectRbt[1]; // Simply right-multiply is WRONG
+    // }
+    // else
+    // {
+
+    
+    // }
 
     // g_objectRbt[0] *= m; // Simply right-multiply is WRONG
     glutPostRedisplay(); // we always redraw if we changed the scene
@@ -599,40 +615,48 @@ static void keyboard(const unsigned char key, const int x, const int y)
     break;
   case 'v':
     cout << "v key pressed";
-    if (cameraStatus == 0)
-    {
-
-      cameraStatus = 1;
+    g_cameraIndex++;
+    if (g_cameraIndex >= g_numObject) {
+      g_cameraIndex = -1;
     }
-    else if (cameraStatus == 1)
-    {
+    // if (cameraStatus == 0)
+    // {
 
-      cameraStatus = 2;
-    }
-    else
-    {
+    //   cameraStatus = 1;
+    // }
+    // else if (cameraStatus == 1)
+    // {
 
-      cameraStatus = 0;
-    }
+    //   cameraStatus = 2;
+    // }
+    // else
+    // {
+
+    //   cameraStatus = 0;
+    // }
 
     break;
   case 'o':
     cout << "o key was pressed!";
-    if (manipulationStatus == 0)
-    {
-
-      manipulationStatus = 1;
+    g_objectIndex++;
+    if (g_objectIndex >= g_numObject) {
+      g_objectIndex = -1;
     }
-    else if (manipulationStatus == 1)
-    {
+    // if (manipulationStatus == 0)
+    // {
 
-      manipulationStatus = 2;
-    }
-    else
-    {
+    //   manipulationStatus = 1;
+    // }
+    // else if (manipulationStatus == 1)
+    // {
 
-      manipulationStatus = 0;
-    }
+    //   manipulationStatus = 2;
+    // }
+    // else
+    // {
+
+    //   manipulationStatus = 0;
+    // }
     // o 키가 눌렸을 때 현재 manipulated 되고 있는 object 를 바꿔야 함
     //
     break;
