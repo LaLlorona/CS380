@@ -424,11 +424,114 @@ static void reshape(const int w, const int h)
   glutPostRedisplay();
 }
 
+Cvec3 getIntersectionBetweenVector3AndArcball(Cvec3 vector) {
+  Cvec3 u = vector; //??? do I have to think about my rbt rotation?
+  Cvec3 o = g_myRbt.getTranslation();
+  Cvec3 center = g_arcballRbt.getTranslation();
+  double r = g_currentArcballRadius;
+
+  double a = norm2(vector);
+  double b = 2 * dot(vector, (o - center));
+  double c = norm2(o - center) - r * r;
+
+  bool isIntersect = b * b - 4 * a * c > CS380_EPS;
+
+  if (isIntersect) {
+    double d = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
+    Cvec3 result = o + u * d;
+    return result;
+  }
+  else {
+    return Cvec3(0, 0, 0);
+  }
+}
+
+Cvec3 getArcballIntersectionCvec3(double clickX, double clickY) {
+  Cvec2 clickInput(clickX, clickY);
+
+  Cvec3 ray = getModelViewRay(clickInput, g_frustFovY, g_windowWidth, g_windowHeight);
+
+  Cvec3 u = ray; //??? do I have to think about my rbt rotation?
+  Cvec3 o = g_myRbt.getTranslation();
+  Cvec3 center = g_arcballRbt.getTranslation();
+  double r = g_currentArcballRadius;
+
+  double a = norm2(ray);
+  double b = 2 * dot(ray, (o - center));
+  double c = norm2(o - center) - r * r;
+
+  bool isIntersect = b * b - 4 * a * c > CS380_EPS;
+
+  if (isIntersect) {
+    double d = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
+    Cvec3 result = o + u * d;
+    return result;
+  }
+  else {
+
+    
+    
+    double sx = ray(0);
+    double sy = ray(1);
+    double sz = ray(2);
+
+    double xc = center(0);
+    double yc = center(1);
+    double zc = center(2);
+
+    double x0 = o(0);
+    double y0 = o(1);
+    double z0 = o(2);
+
+    
+
+    double t = (sx * (xc - x0) + sy * (yc - y0) + sz * (zc - z0)) / (sx * sx + sy * sy + sz * sz);
+
+    double d = sqrt(pow(x0 + sx*t - xc,2 ) + pow(y0 + sy* t - yc, 2) + pow(z0 + sz*t - zc, 2)) - r;
+
+    double px = xc + (x0 + sx*t - xc) * r / (r+ d);
+    double py = yc + (y0 + sy*t - yc) * r / (r+ d);
+    double pz = zc + (z0 + sz*t - zc) * r / (r+ d);
+
+    Cvec3 direction = Cvec3(px - center(0), py - center(1), pz - center(2));
+
+    return direction;
+
+  }
+}
+
 static void motion(const int x, const int y)
 {
 
   const double dx = x - g_mouseClickX;
   const double dy = g_windowHeight - y - 1 - g_mouseClickY;
+
+  
+
+  Quat targetQuaternion = Quat();
+  if (g_canDrawArcball) {
+    Cvec3 intersectionPoint = getArcballIntersectionCvec3(g_mouseClickX, g_mouseClickY);
+    cout << "next mouse click on arcball is \n";
+    cout << intersectionPoint(0) << " " << intersectionPoint(1) << " " << intersectionPoint(2) << "\n";
+
+
+    Cvec3 p1 = getArcballIntersectionCvec3(g_mouseClickX, g_mouseClickY);
+    Cvec3 p2 = getArcballIntersectionCvec3(g_mouseClickX + dx, g_mouseClickY + dy);
+    
+    Cvec3 v1 = p1 - g_arcballRbt.getTranslation();
+    Cvec3 v2 = p2 - g_arcballRbt.getTranslation();
+
+    Quat quatV1 = Quat(0, v1(0), v1(1), v1(2));
+    Quat quatV2 = Quat(0, v2(0), v2(1), v2(2));
+    
+
+    targetQuaternion =  normalize((quatV2 * (quatV1 * -1)));
+
+    cout << "value of target quaterion is " << targetQuaternion(0) << 
+    " " << targetQuaternion(1) << " " << targetQuaternion(2) << " " << targetQuaternion(3) << "\n";
+  }
+  // targetQuaternion = Quat();
+  
 
   RigTForm A;
 
@@ -476,31 +579,46 @@ static void motion(const int x, const int y)
   { // left button down?
     if ((g_cameraIndex == -1 && g_objectIndex == -1) || (g_cameraIndex == g_objectIndex))
     {
-      RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
-      RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(-dx));
-      m = xRotation * yRotation;
+      if (g_canDrawArcball) {
+        m = RigTForm().setRotation(targetQuaternion);
+      }
+      else {
+        RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(dy));
+        RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(-dx));
+        m = xRotation * yRotation;
+      }
+      
+
+      
     }
     else
     {
-      RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(-dy));
-      RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(dx));
-      m = xRotation * yRotation;
+      if (g_canDrawArcball) {
+        m = RigTForm().setRotation(targetQuaternion);
+      }
+      else {
+        RigTForm xRotation = RigTForm().setRotation(RigTForm().getRotation().makeXRotation(-dy));
+        RigTForm yRotation = RigTForm().setRotation(RigTForm().getRotation().makeYRotation(dx));
+        m = xRotation * yRotation;
+      }
+ 
+      
     }
   }
   else if (g_mouseRClickButton && !g_mouseLClickButton)
   { // right button down?
     if (g_cameraIndex == -1 && g_objectIndex == -1 && worldSkyFrameStatus == WORLDSKY)
     {
-      m = RigTForm().setTranslation(Cvec3(-dx, -dy, 0) * 0.01);
+      m = RigTForm().setTranslation(Cvec3(-dx, -dy, 0) * 0.01 * g_currentArcballRadius);
     }
     else
     {
-      m = RigTForm().setTranslation(Cvec3(dx, dy, 0) * 0.01);
+      m = RigTForm().setTranslation(Cvec3(dx, dy, 0) * 0.01 * g_currentArcballRadius);
     }
   }
   else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton))
   { // middle or (left and right) button down?
-    m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * 0.01);
+    m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * 0.01 * g_currentArcballRadius);
   }
 
   AMAI = A * m * inv(A);
