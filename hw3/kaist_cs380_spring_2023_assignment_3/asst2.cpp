@@ -69,6 +69,7 @@ static int g_activeShader = 0;
 
 static double g_currentArcballRadius;
 static double g_arcballScreenRadius;
+static double g_arcballScale;
 
 static int g_cameraIndex = -1; //-1 for sky, 0, 1, 2... g_numObject - 1 for object
 static int g_objectIndex = 0; // current manipulation object. 0, 1, 2 ... g_numObject - 1
@@ -384,9 +385,10 @@ static void drawStuff()
   // draw Arcball
 
   if (g_canDrawArcball) {
-    double scaleFactor = getScreenToEyeScale((invEyeRbt * g_arcballRbt).getTranslation()(2), g_frustFovY, g_windowHeight);
+    
+    g_arcballScale = getScreenToEyeScale((invEyeRbt * g_arcballRbt).getTranslation()(2), g_frustFovY, g_windowHeight);
     // double scaleFactor = invEyeRbt.getTranslation()[2];
-    g_currentArcballRadius = scaleFactor * g_arcballScreenRadius;
+    g_currentArcballRadius = g_arcballScale * g_arcballScreenRadius;
     // cout << "currentArcballSize is " << g_currentArcballRadius << "\n";
     MVM = rigTFormToMatrix(invEyeRbt * g_arcballRbt) * Matrix4().makeScale(Cvec3(g_currentArcballRadius, g_currentArcballRadius, g_currentArcballRadius));
 
@@ -424,27 +426,27 @@ static void reshape(const int w, const int h)
   glutPostRedisplay();
 }
 
-Cvec3 getIntersectionBetweenVector3AndArcball(Cvec3 vector) {
-  Cvec3 u = vector; //??? do I have to think about my rbt rotation?
-  Cvec3 o = g_myRbt.getTranslation();
-  Cvec3 center = g_arcballRbt.getTranslation();
-  double r = g_currentArcballRadius;
+// Cvec3 getIntersectionBetweenVector3AndArcball(Cvec3 vector) {
+//   Cvec3 u = vector; //??? do I have to think about my rbt rotation?
+//   Cvec3 o = g_myRbt.getTranslation();
+//   Cvec3 center = g_arcballRbt.getTranslation();
+//   double r = g_currentArcballRadius;
 
-  double a = norm2(vector);
-  double b = 2 * dot(vector, (o - center));
-  double c = norm2(o - center) - r * r;
+//   double a = norm2(vector);
+//   double b = 2 * dot(vector, (o - center));
+//   double c = norm2(o - center) - r * r;
 
-  bool isIntersect = b * b - 4 * a * c > CS380_EPS;
+//   bool isIntersect = b * b - 4 * a * c > CS380_EPS;
 
-  if (isIntersect) {
-    double d = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
-    Cvec3 result = o + u * d;
-    return result;
-  }
-  else {
-    return Cvec3(0, 0, 0);
-  }
-}
+//   if (isIntersect) {
+//     double d = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
+//     Cvec3 result = o + u * d;
+//     return result;
+//   }
+//   else {
+//     return Cvec3(0, 0, 0);
+//   }
+// }
 
 Cvec3 getArcballIntersectionCvec3(double clickX, double clickY) {
   Cvec2 clickInput(clickX, clickY);
@@ -452,8 +454,10 @@ Cvec3 getArcballIntersectionCvec3(double clickX, double clickY) {
   Cvec3 ray = getModelViewRay(clickInput, g_frustFovY, g_windowWidth, g_windowHeight);
 
   Cvec3 u = ray; //??? do I have to think about my rbt rotation?
-  Cvec3 o = g_myRbt.getTranslation();
-  Cvec3 center = g_arcballRbt.getTranslation();
+  
+
+  Cvec3 o =   (inv(g_myRbt)* g_myRbt).getTranslation();
+  Cvec3 center = (inv(g_myRbt) * g_arcballRbt).getTranslation();
   double r = g_currentArcballRadius;
 
   double a = norm2(ray);
@@ -464,7 +468,7 @@ Cvec3 getArcballIntersectionCvec3(double clickX, double clickY) {
 
   if (isIntersect) {
     double d = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
-    Cvec3 result = o + u * d;
+    Cvec3 result = (inv(g_myRbt) * g_myRbt).getTranslation() + u * d;
     return result;
   }
   else {
@@ -489,11 +493,14 @@ Cvec3 getArcballIntersectionCvec3(double clickX, double clickY) {
 
     double d = sqrt(pow(x0 + sx*t - xc,2 ) + pow(y0 + sy* t - yc, 2) + pow(z0 + sz*t - zc, 2)) - r;
 
-    double px = xc + (x0 + sx*t - xc) * r / (r+ d);
-    double py = yc + (y0 + sy*t - yc) * r / (r+ d);
-    double pz = zc + (z0 + sz*t - zc) * r / (r+ d);
+    // double px = xc + (x0 + sx*t - xc) * r / (r+ d);
+    // double py = yc + (y0 + sy*t - yc) * r / (r+ d);
+    // double pz = zc + (z0 + sz*t - zc) * r / (r+ d);
+    double px = xc + (x0 + sx*t - xc) ;
+    double py = yc + (y0 + sy*t - yc) ;
+    double pz = zc + (z0 + sz*t - zc) ;
 
-    Cvec3 direction = Cvec3(px - center(0), py - center(1), pz - center(2));
+    Cvec3 direction = Cvec3(px - center(0), py - center(1), pz - center(2)) * 4;
 
     return direction;
 
@@ -511,15 +518,23 @@ static void motion(const int x, const int y)
   Quat targetQuaternion = Quat();
   if (g_canDrawArcball) {
     Cvec3 intersectionPoint = getArcballIntersectionCvec3(g_mouseClickX, g_mouseClickY);
-    cout << "next mouse click on arcball is \n";
-    cout << intersectionPoint(0) << " " << intersectionPoint(1) << " " << intersectionPoint(2) << "\n";
+    // cout << "next mouse click on arcball is \n";
+    // cout << intersectionPoint(0) << " " << intersectionPoint(1) << " " << intersectionPoint(2) << "\n";
 
 
     Cvec3 p1 = getArcballIntersectionCvec3(g_mouseClickX, g_mouseClickY);
-    Cvec3 p2 = getArcballIntersectionCvec3(g_mouseClickX + dx, g_mouseClickY + dy);
+    Cvec3 p2;
+
+    if (g_cameraIndex == -1 && g_objectIndex == -1 && worldSkyFrameStatus == WORLDSKY) {
+      p2 = getArcballIntersectionCvec3(g_mouseClickX - dx, g_mouseClickY - dy);
+    }
+    else {
+      p2 = getArcballIntersectionCvec3(g_mouseClickX + dx, g_mouseClickY + dy);
+    }
     
-    Cvec3 v1 = p1 - g_arcballRbt.getTranslation();
-    Cvec3 v2 = p2 - g_arcballRbt.getTranslation();
+    
+    Cvec3 v1 = p1 - (inv(g_myRbt) *g_arcballRbt).getTranslation();
+    Cvec3 v2 = p2 - (inv(g_myRbt) * g_arcballRbt).getTranslation();
 
     Quat quatV1 = Quat(0, v1(0), v1(1), v1(2));
     Quat quatV2 = Quat(0, v2(0), v2(1), v2(2));
@@ -527,8 +542,8 @@ static void motion(const int x, const int y)
 
     targetQuaternion =  normalize((quatV2 * (quatV1 * -1)));
 
-    cout << "value of target quaterion is " << targetQuaternion(0) << 
-    " " << targetQuaternion(1) << " " << targetQuaternion(2) << " " << targetQuaternion(3) << "\n";
+    // cout << "value of target quaterion is " << targetQuaternion(0) << 
+    // " " << targetQuaternion(1) << " " << targetQuaternion(2) << " " << targetQuaternion(3) << "\n";
   }
   // targetQuaternion = Quat();
   
@@ -575,6 +590,7 @@ static void motion(const int x, const int y)
 
 
   RigTForm m;
+  double translationFixup = g_canDrawArcball ? g_arcballScale : 0.01;
   if (g_mouseLClickButton && !g_mouseRClickButton)
   { // left button down?
     if ((g_cameraIndex == -1 && g_objectIndex == -1) || (g_cameraIndex == g_objectIndex))
@@ -607,18 +623,20 @@ static void motion(const int x, const int y)
   }
   else if (g_mouseRClickButton && !g_mouseLClickButton)
   { // right button down?
+
+    
     if (g_cameraIndex == -1 && g_objectIndex == -1 && worldSkyFrameStatus == WORLDSKY)
     {
-      m = RigTForm().setTranslation(Cvec3(-dx, -dy, 0) * 0.01 * g_currentArcballRadius);
+      m = RigTForm().setTranslation(Cvec3(-dx, -dy, 0) * translationFixup);
     }
     else
     {
-      m = RigTForm().setTranslation(Cvec3(dx, dy, 0) * 0.01 * g_currentArcballRadius);
+      m = RigTForm().setTranslation(Cvec3(dx, dy, 0) * translationFixup);
     }
   }
   else if (g_mouseMClickButton || (g_mouseLClickButton && g_mouseRClickButton))
   { // middle or (left and right) button down?
-    m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * 0.01 * g_currentArcballRadius);
+    m = RigTForm().setTranslation(Cvec3(0, 0, -dy) * translationFixup);
   }
 
   AMAI = A * m * inv(A);
