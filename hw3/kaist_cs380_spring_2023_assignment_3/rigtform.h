@@ -59,7 +59,8 @@ public:
     //full afine matrix 에다가 Cvec4를 곱한다. 
     //왜 필요한가? - Matrix4 에 Cvec4를 곱하는 함수가 존재하기 때문.
 
-    return cvec3ToMatrix4(t_) * quatToMatrix(r_) * a;
+    // return r_ * (a + Cvec4(t_, 0));
+    return r_ * a + Cvec4(t_, 0);
   }
 
   RigTForm operator * (const RigTForm& a) const {
@@ -72,11 +73,19 @@ public:
     Cvec3 t1 = t_;
     Quat r1 = r_;
 
-    Cvec4 r1t2 = quatToMatrix(r1) * cvec3ToCvec4(t2);
+    //this part should be changed
 
-    Cvec4 t1_r1t2 = cvec3ToCvec4(t1) + r1t2;
+    // Cvec4 t2Cvec4(0, t2(0), t2(1), t2(2));
 
-    Cvec3 resultTrans = cvec4ToCvec3(t1_r1t2);
+    Quat cvec3ToCvec4Quat(0, t2(0), t2(1), t2(2));
+
+    Quat r1t2Quat = r1 * (cvec3ToCvec4Quat * inv(r1));
+    Cvec4 r1t2(r1t2Quat(0), r1t2Quat(1), r1t2Quat(2), r1t2Quat(3)); 
+
+
+    Cvec4 t1_r1t2 = Cvec4(0, t1(0), t1(1), t1(2)) + r1t2;
+
+    Cvec3 resultTrans(t1_r1t2(1), t1_r1t2(2), t1_r1t2(3));
 
     Quat resultQuaterion = r1 * r2;
 
@@ -84,16 +93,6 @@ public:
     result.setRotation(resultQuaterion);
 
     return result;
-
-    //question: how can I convert matrix4 to quaternion?????????
-    // 굳이 Matrix4 로 변환한 필요가 없다. 
-
-    //r1: quaternion 으로 정의됨. 
-
-
-
-    
-
   }
 };
 
@@ -105,13 +104,19 @@ inline RigTForm inv(const RigTForm& tform) {
 
   Quat r = tform.getRotation();
   Cvec3 t = tform.getTranslation();
-  Cvec4 tCvec4(t(0), t(1), t(2), 1);
 
-  Matrix4 rInv = quatToMatrix(inv(r));
 
-  Cvec4 transResult = rInv * tCvec4 * -1;
+  //this part should be changed 
+  // Cvec4 tCvec4(0, t(0), t(1), t(2));
 
-  Cvec3 transResultCvec3 = cvec4ToCvec3(transResult);
+  Quat tCvec4Quat(0, t(0), t(1),t(2));
+
+  Quat minusRInvT = inv(r) * (tCvec4Quat * inv(inv(r))) * -1;
+
+  Cvec4 minusRInvTCvec4(minusRInvT(0), minusRInvT(1), minusRInvT(2), minusRInvT(3));
+
+  Cvec3 transResultCvec3(minusRInvTCvec4(1), minusRInvTCvec4(2), minusRInvTCvec4(3));
+
   result.setTranslation(transResultCvec3);
   result.setRotation(inv(r));
 
